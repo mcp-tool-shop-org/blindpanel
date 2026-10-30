@@ -1,0 +1,11 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+.venv/
+dist/
+# never commit study material
+sealed_store/
+*.sealed.jsonl
+sealed_map_*.bin
+answers.jsonl
