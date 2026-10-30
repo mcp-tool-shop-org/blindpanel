@@ -4,8 +4,23 @@ __pycache__/
 .env
 .venv/
 dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+junit.xml
 # never commit study material
 sealed_store/
 *.sealed.jsonl
 sealed_map_*.bin
+sealed_manifest*.json
+sealed_manifest*.jsonl
+configs/*.generated.json
+configs/*_local.json
+*arm_map*.json
+*arm-map*.json
 answers.jsonl
+pilot_answers_*.jsonl
+operator_audit.jsonl
+unblinded_results*.json
