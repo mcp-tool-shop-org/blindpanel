@@ -2,6 +2,18 @@
 
 All notable changes to `blindpanel` will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- Session Complete card counted the wrong block: after Block 1 (43 items) with Block 2 declined it read `42 / 42` (the last Block 2 item's total, since the cursor rests on the first unrated item); the card and the block-transition card now use totals the server reports per finished block (`completed_blocks`, `prev_block_total_items`), so Block 1 ends as `43 / 43` and the hardcoded `43` is gone. Totals are the same ones the session counter uses; warm-ups and repeats are never broken out.
+- Three native tiles are now the default whenever the window fits them: the `3-Up` toggle and `?layout=3up` gave the scaled 456 px grid even at `3440×1440`. The `<video>` is exactly `832×480` CSS px in native and single-clip layouts (the tile is 834×482 around its 1 px border), the breakpoint is `2554 px`, and the zoom buttons show `1:1` as active there (`Fit` stays as a manual option).
+- Wide-screen text scale: every font size and control height is `calc(<px> * var(--ui-scale))`, 1.25 at `>= 2554 px`, so the smallest control text at `3440×1440` is 15 px (was 12 px) while `1440×900` and `1024×768` are unchanged.
+- The rest-break and block-transition cards' "recommended rest remaining" timer now counts down from 10:00 instead of showing a fixed `08 : 42`.
+
+### Added
+- Mock screenshot set now includes the Block 2 optional card and the `3440×1440` native 3-up and flip screens.
+- Tests for the three cards' counts, the native tile width and zoom state at `3440×1440`, the flip default at `1440×900`, and the `>= 14 px` text floor at `3440×1440`.
+
 ## [0.1.0] - 2026-10-30
 
 ### Added

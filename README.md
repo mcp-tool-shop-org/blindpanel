@@ -26,8 +26,8 @@
    - **Blocks, Warm-ups, Rest Breaks, Hidden Repeats & Counterbalancing**: Enforces Latin-square slot balance across variants, all 6 permutations across 36 core triples, non-adjacent prompt constraints ($\text{prompt}_t \ne \text{prompt}_{t-1}$), and hidden repeat spacing ($\ge 12$ intervening items with cyclic slot shift).
 
 3. **Detail Visibility (`832×480` Native 1:1 & Synchronized Flip Mode)**:
-   - On wide displays that fit $3 \times 832\,\text{px}$ plus gutters ($\ge 2548\,\text{px}$, such as a `3440×1440` ultrawide monitor), `blindpanel` defaults to **three native-size (`832×480`) tiles side-by-side**.
-   - On narrower windows (`< 2548px`, such as `1440×900` or `1024×768`), `blindpanel` automatically falls back to **synchronized single-large-clip 1:1 Flip mode** (`A / B / C` flip via buttons or keys `1 / 2 / 3`), keeping all `<video>` elements frame-locked in time and playback state, while also allowing one-click switching to the **3-Up** side-by-side grid without losing time position or selected answers.
+   - On wide displays that fit $3 \times 832\,\text{px}$ plus gutters ($\ge 2554\,\text{px}$, such as a `3440×1440` ultrawide monitor), `blindpanel` defaults to **three native-size (`832×480`) tiles side-by-side**.
+   - On narrower windows (`< 2554px`, such as `1440×900` or `1024×768`), `blindpanel` automatically falls back to **synchronized single-large-clip 1:1 Flip mode** (`A / B / C` flip via buttons or keys `1 / 2 / 3`), keeping all `<video>` elements frame-locked in time and playback state, while also allowing one-click switching to the **3-Up** side-by-side grid without losing time position or selected answers.
 
 4. **Strict Rater/Operator Surface Separation & Leak Guard**:
    - **Separate Rater & Operator Ports**: The rater port serves only blind rater views and returns `404 Not Found` on all `/api/operator/*` and `/api/export/*` routes (with and without a token). The operator surface runs on a separate localhost port started only when `--operator-port` is passed, authenticated by a per-start token printed exclusively to the operator's terminal.

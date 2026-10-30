@@ -796,6 +796,18 @@ class BlindPanelSession:
                 1 for bit in block_items if states[bit["global_index"]]["completed"]
             )
 
+            # Figures for the interstitial cards (display follow-ups): the block before the active one, and
+            # every block whose items are all rated. Totals are the same `num_items` the session counter uses
+            # (warm-ups and repeats included, never broken out).
+            prev_block_total_items = (
+                int(self.blocks[item["block_index"] - 1]["num_items"]) if item["block_index"] > 0 else None
+            )
+            completed_blocks = [
+                {"block_number": b_idx + 1, "total_items": int(b["num_items"])}
+                for b_idx, b in enumerate(self.blocks)
+                if b["items"] and all(states[bit["global_index"]]["completed"] for bit in b["items"])
+            ]
+
             can_undo = any(
                 ev.get("event") in ("item_complete", "step") for ev in self.events_by_mode[mode]
             )
@@ -825,6 +837,8 @@ class BlindPanelSession:
                 "item_number": item["item_number_in_block"],
                 "block_total_items": item["block_total_items"],
                 "block_completed_items": block_completed,
+                "prev_block_total_items": prev_block_total_items,
+                "completed_blocks": completed_blocks,
                 "counter_label": f"Item {item['item_number_in_block']} / {item['block_total_items']}",
                 "progress_aria_label": f"Item {item['item_number_in_block']} of {item['block_total_items']}",
                 "prompt_id": item["prompt_id"],
