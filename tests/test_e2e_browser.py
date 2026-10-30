@@ -10,10 +10,10 @@ Exercises:
    - Narrower windows (1440×900 and 1024×768) auto-fallback to synchronized single-large-clip 1:1 Flip mode
      (`video-grid-flip-single`) with A/B/C flip (`1`/`2`/`3`), and also support toggling to 3-Up Grid (`video-grid-3`)
      without losing playback position or draft selections.
-5. Rating items (including per-clip Question 2 on M1–M4 manipulation rows).
+5. Rating items (including per-clip Question 2 on M1–M4 manipulation rows and keyboard shortcuts Y/P/N, Shift+1-3, F).
 6. Resuming exact state after a full browser page reload.
-7. Completing the session, exporting blind CSV/JSONL, and running offline unblinding (`unblind_session`) reading
-   only the sealed store.
+7. Completing the session (verifying rater export is removed and Session Complete only thanks the rater and says the
+   session is saved) and running offline unblinding (`unblind_session`) reading only the sealed store.
 """
 from __future__ import annotations
 
@@ -21,10 +21,12 @@ import json
 import os
 import shutil
 import threading
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Optional
 
+import pytest
 from playwright.sync_api import Page, sync_playwright
 
 from blindpanel.mock_clips import generate_mock_study_clips
@@ -290,20 +292,24 @@ def test_e2e_browser_flow_detail_visibility_resume_and_unblind_on_mock_clips(tmp
             page.click(f'[data-choice="{best2}"]')
             page.click("#btn-submit-item")
 
-            # 6. Session Complete screen
-            page.wait_for_selector("#btn-export-csv")
+            # 6. Session Complete screen (no rater export buttons; only thanks the rater and says session is saved)
+            page.wait_for_selector("#session-saved-message")
             _assert_rater_dom_hygiene_and_font_size(page, "session_complete")
             complete_text = page.inner_text("body")
             assert "Session Complete" in complete_text
+            assert "Thank you" in complete_text
+            assert "saved" in complete_text
             assert "Pre-Flight" not in complete_text
+            assert page.locator("#btn-export-csv").count() == 0
+            assert page.locator("#btn-export-jsonl").count() == 0
 
             browser.close()
 
-        # 7. Verify CSV/JSONL export and offline unblinding
-        with urllib.request.urlopen(base_url + "/api/export/csv") as resp:
-            csv_data = resp.read().decode("utf-8")
-        assert "M1" in csv_data
-        assert "ARM_1" not in csv_data
+        # 7. Verify rater port returns 404 on /api/export/* and offline unblinding works
+        for exp_route in ("/api/export/csv", "/api/export/jsonl"):
+            with pytest.raises(urllib.error.HTTPError) as exc_exp:
+                urllib.request.urlopen(base_url + exp_route)
+            assert exc_exp.value.code == 404
 
         events, _ = load_jsonl_safe(str(ans_path))
         unblinded = unblind_session(smap, events)

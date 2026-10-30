@@ -69,7 +69,7 @@ def main() -> int:
         )
         session.start_session(mode="live")
 
-        httpd = create_http_server(session, host="127.0.0.1", port=0)
+        httpd = create_http_server(session, host="127.0.0.1", port=0, enable_test_hooks=True)
         port = httpd.server_address[1]
         base_url = f"http://127.0.0.1:{port}"
         t = threading.Thread(target=httpd.serve_forever, daemon=True)

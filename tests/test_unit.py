@@ -202,9 +202,7 @@ def test_session_with_public_design_config_and_clips_dir(tmp_path: Path) -> None
 
     all_cells = sorted({it["base_cell_id"] for blk in cfg["blocks"] for it in blk["items"]})
     all_arms = sorted({arm for blk in cfg["blocks"] for arm in blk["arms"]})
-    clips_dir = tmp_path / "mock_clips"
     _make_dummy_clips(tmp_path, all_arms, all_cells)
-    # _make_dummy_clips writes to tmp_path / "clips"
     clips_dir = tmp_path / "clips"
 
     sealed_path = tmp_path / "sealed_store" / "sealed_map.bin"
@@ -467,7 +465,6 @@ def test_all_six_methods_and_unblinding_and_crash_resume(tmp_path: Path) -> None
 
     # Item 3 (C1-rep repeat): pick ARM_1 Best, ARM_3 Worst for 100% concordance with Pass 1
     a2l_3 = smap["rows"][3]["arm_to_letter"]
-    # Verify repeat shifted slots relative to Pass 1
     assert a2l_3 != a2l_1
     session.submit_rating({
         "global_index": 3,
@@ -541,7 +538,6 @@ def test_mock_clips_and_png_marker_utilities(tmp_path: Path) -> None:
     single = generate_mock_mp4_clip(tmp_path / "single.mp4", label="S1")
     assert single["generator"] == MOCK_CLIP_MARKER
 
-    # Minimal valid 1x1 PNG
     import struct
     import zlib
 
@@ -558,7 +554,6 @@ def test_mock_clips_and_png_marker_utilities(tmp_path: Path) -> None:
     png_file.write_bytes(_make_1x1_png())
     assert read_png_mock_marker(png_file) is None
     stamp_png_with_mock_marker(png_file)
-    # Stamping twice is idempotent
     stamp_png_with_mock_marker(png_file)
     assert read_png_mock_marker(png_file) == MOCK_CLIP_MARKER
     manifest = write_mock_screenshots_manifest(tmp_path, ["test-mock-1.png"])
@@ -572,7 +567,7 @@ def test_cli_entrypoints_and_http_endpoints_and_validation_branches(tmp_path: Pa
 
     from blindpanel.cosmos3_study import main as cosmos_main
     from blindpanel.schema import letters_for_count, validate_question2_spec
-    from blindpanel.server import create_http_server
+    from blindpanel.server import create_http_server, create_operator_http_server
     from blindpanel.server import main as server_main
 
     with pytest.raises(ValueError, match="between 1 and 26"):
@@ -630,16 +625,32 @@ def test_cli_entrypoints_and_http_endpoints_and_validation_branches(tmp_path: Pa
         answers_path=str(ans_path),
     )
 
-    httpd = create_http_server(session2, host="127.0.0.1", port=0)
+    httpd = create_http_server(session2, host="127.0.0.1", port=0, enable_test_hooks=True)
     port = httpd.server_address[1]
     base_url = f"http://127.0.0.1:{port}"
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
     t.start()
 
+    op_httpd, op_token = create_operator_http_server(session2, host="127.0.0.1", port=0)
+    op_port = op_httpd.server_address[1]
+    op_base_url = f"http://127.0.0.1:{op_port}"
+    op_t = threading.Thread(target=op_httpd.serve_forever, daemon=True)
+    op_t.start()
+
     try:
-        for route in ("/", "/styles.css", "/app.js", "/api/state", "/api/operator/preflight", "/api/operator/audit", "/api/export/csv", "/api/export/jsonl"):
+        for route in ("/", "/styles.css", "/app.js", "/api/state"):
             with urllib.request.urlopen(base_url + route) as resp:
                 assert resp.status == 200
+
+        test_js = urllib.request.urlopen(base_url + "/app.js").read().decode("utf-8")
+        assert "__blindpanel" in test_js
+
+        for op_route in ("/api/operator/preflight", "/api/operator/audit", "/api/export/csv", "/api/export/jsonl"):
+            req_op = urllib.request.Request(op_base_url + op_route, headers={"Authorization": f"Bearer {op_token}"})
+            with urllib.request.urlopen(req_op) as resp:
+                assert resp.status == 200
+            with urllib.request.urlopen(op_base_url + op_route + f"?token={op_token}") as resp_q:
+                assert resp_q.status == 200
 
         state_data = json.loads(urllib.request.urlopen(base_url + "/api/state").read().decode("utf-8"))
         salted_clip_url = state_data["clips"][0]["url"]
@@ -649,21 +660,25 @@ def test_cli_entrypoints_and_http_endpoints_and_validation_branches(tmp_path: Pa
             assert resp.status == 206
             assert len(resp.read()) == 4
 
-        def post_json(route: str, payload: dict) -> dict:
+        def post_json(url_base: str, route: str, payload: dict, headers: dict | None = None) -> dict:
+            hdrs = {"Content-Type": "application/json"}
+            if headers:
+                hdrs.update(headers)
             r = urllib.request.Request(
-                base_url + route,
+                url_base + route,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers=hdrs,
                 method="POST",
             )
             with urllib.request.urlopen(r) as resp:
                 return json.loads(resp.read().decode("utf-8"))
 
-        post_json("/api/operator/override", {"reason": "Publisher override for test"})
-        post_json("/api/session/start", {"mode": "live"})
-        post_json("/api/flag_flawed", {"global_index": 0, "flawed": True, "reason": "test flag"})
-        post_json("/api/note", {"global_index": 0, "notes": "note via HTTP"})
+        post_json(op_base_url, "/api/operator/override", {"reason": "Publisher override for test"}, headers={"X-Operator-Token": op_token})
+        post_json(base_url, "/api/session/start", {"mode": "live"})
+        post_json(base_url, "/api/flag_flawed", {"global_index": 0, "flawed": True, "reason": "test flag"})
+        post_json(base_url, "/api/note", {"global_index": 0, "notes": "note via HTTP"})
         post_json(
+            base_url,
             "/api/submit",
             {
                 "global_index": 0,
@@ -672,8 +687,9 @@ def test_cli_entrypoints_and_http_endpoints_and_validation_branches(tmp_path: Pa
                 "q2_by_letter": {"A": "yes", "B": "partly", "C": "no"},
             },
         )
-        post_json("/api/undo", {"mode": "live"})
+        post_json(base_url, "/api/undo", {"mode": "live"})
         post_json(
+            base_url,
             "/api/submit",
             {
                 "global_index": 0,
@@ -683,6 +699,8 @@ def test_cli_entrypoints_and_http_endpoints_and_validation_branches(tmp_path: Pa
             },
         )
     finally:
+        op_httpd.shutdown()
+        op_httpd.server_close()
         httpd.shutdown()
         httpd.server_close()
 
@@ -696,7 +714,13 @@ def test_cli_entrypoints_and_http_endpoints_and_validation_branches(tmp_path: Pa
     with pytest.raises(ValueError, match="Tamper check failed"):
         unblind_session(tampered_map, [])
 
+    tampered_manifest_sha = json.loads(sealed_path.read_text(encoding="utf-8"))
+    tampered_manifest_sha["sealed_manifest_sha256"] = "a" * 64
+    with pytest.raises(ValueError, match="Tamper check failed on sealed_manifest_sha256"):
+        unblind_session(tampered_manifest_sha, [])
+
     assert server_main(["--config", str(cfg_path), "--host", "0.0.0.0"]) == 2
+    assert server_main(["--config", str(cfg_path), "--port", "8765", "--operator-port", "8765"]) == 2
     assert server_main(["--config", str(tmp_path / "nonexistent.json")]) == 1
 
     out_cosmos = tmp_path / "cosmos_out.json"

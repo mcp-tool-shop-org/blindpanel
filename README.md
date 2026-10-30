@@ -11,6 +11,7 @@
 1. **Zero Study Artifacts in Git (Sealed Session Design)**:
    - Committed study configs (`configs/cosmos3_amendment_a.json`) hold **only** cell IDs, prompts, rater cues, block and method settings, and timing rules — never per-item arm orders, clip paths, clip SHA-256 digests, seeds, salts, or absolute paths.
    - At session start, a fresh 256-bit ($\ge 128$-bit) cryptographic secret seed (`secrets.token_bytes(32)`) is generated and stored exclusively inside the gitignored `sealed_store/`.
+   - Optional `--arm-map <path>` maps config pseudonyms (`ARM_1..ARM_4`) to local clip filename prefixes, read once at session start into the sealed store and never served.
    - From that secret seed come the per-item slot orders, the Latin-square / 6-permutation counterbalancing, and the per-session salted clip names (`clip_<salted_token>.mp4`).
    - Clips are served under those salted names from a **sealed manifest** (`arm`, `original_sha256`, `salted_name`) inside the sealed store, verified by SHA-256 at load (`REFUSED AT LOAD` on mismatch), and never sent to the browser.
 
@@ -28,11 +29,11 @@
    - On wide displays that fit $3 \times 832\,\text{px}$ plus gutters ($\ge 2548\,\text{px}$, such as a `3440×1440` ultrawide monitor), `blindpanel` defaults to **three native-size (`832×480`) tiles side-by-side**.
    - On narrower windows (`< 2548px`, such as `1440×900` or `1024×768`), `blindpanel` automatically falls back to **synchronized single-large-clip 1:1 Flip mode** (`A / B / C` flip via buttons or keys `1 / 2 / 3`), keeping all `<video>` elements frame-locked in time and playback state, while also allowing one-click switching to the **3-Up** side-by-side grid without losing time position or selected answers.
 
-4. **Study Honesty & Rater Screen Hygiene**:
-   - **Operator Pre-Flight & Logged Override Gate**: Displays required actions and estimated durations against actual clip duration; blocks live session start if any item is flagged unless a logged operator override reason is recorded to the audit log.
+4. **Strict Rater/Operator Surface Separation & Leak Guard**:
+   - **Separate Rater & Operator Ports**: The rater port serves only blind rater views and returns `404 Not Found` on all `/api/operator/*` and `/api/export/*` routes (with and without a token). The operator surface runs on a separate localhost port started only when `--operator-port` is passed, authenticated by a per-start token printed exclusively to the operator's terminal.
    - **Isolated Pilot Mode**: Writes to `pilot_answers_<date>.jsonl` apart from live `answers.jsonl`, running on the verified clips.
-   - **Rater Screen Hygiene**: Zero study internals (no arm names, no `"repeat"`, `"warm-up"` counts, `"expected"`, or `"half"`) in any visible text, `title`, `aria-*`, `alt`, or HTML comment. Minimum font size $\ge 12\,\text{px}$ on `#808080` calibrated 50% sRGB grey surround.
-   - **Repository Leak Guard (`blindpanel.leak_guard`)**: Runs in CI and `scripts/verify.sh` over `git ls-files`, rejecting any per-item slot order, arm label near a hash or path, seed/salt key, absolute local path, or non-mock screenshot.
+   - **Rater Screen Hygiene**: Zero study internals (no arm names, no `"repeat"`, `"warm-up"` counts, `"expected"`, or `"half"`) in any visible text, `title`, `aria-*`, `alt`, or HTML comment. Minimum font size $\ge 12\,\text{px}$ on `#808080` calibrated 50% sRGB grey surround, with a 700 ms `#808080` grey adaptation curtain between trials.
+   - **Repository Leak Guard (`blindpanel.leak_guard`)**: Runs in CI and `scripts/verify.sh` over `git ls-files`, rejecting any per-item slot order, arm-map file, arm label near a hash or path, seed/salt key, absolute local path, or non-mock screenshot.
 
 5. **100% Offline & Zero External UI Libraries**:
    - Uses Python's standard library for the runtime server and vanilla HTML/CSS/JS with system font stacks in the browser. Zero external UI libraries or CDN calls at runtime.
@@ -53,16 +54,17 @@ pip install -e ".[dev]"
 python -m blindpanel \
   --config configs/cosmos3_amendment_a.json \
   --clips-dir ./local_clips \
+  --arm-map ./local_arm_map.json \
   --sealed-map sealed_store/sealed_map_session.bin \
   --answers answers.jsonl \
   --host 127.0.0.1 \
-  --port 8765
+  --port 8765 \
+  --operator-port 8766
 ```
 
 - **Rater View**: `localhost:8765/?view=rater`
 - **Pilot Mode**: `localhost:8765/?view=pilot`
-- **Operator Pre-Flight**: `localhost:8765/?view=preflight`
-- **Operator Post-Session Audit**: `localhost:8765/?view=audit`
+- **Operator Surface** (separate port `8766`, requires `X-Operator-Token: <token>` printed to terminal): `/api/operator/preflight`, `/api/operator/audit`, `/api/operator/override`, `/api/export/csv`, `/api/export/jsonl`
 
 ### 3. Offline Unblinding
 

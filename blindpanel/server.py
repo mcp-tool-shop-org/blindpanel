@@ -1,18 +1,28 @@
 """server.py — Local-only HTTP server and sealed session engine for blindpanel.
 
-Enforces Rules 1–6 (Card tg & Card sk):
+Enforces Rules 1–6 (Card tg, Card sk, and Card tm):
 - Committed study configs contain ONLY cell ids, prompts, rater cues, block and method settings, and timing rules.
 - At session start, a NEW cryptographic secret seed is generated (`secrets.token_bytes(32)`, 256 bits >= 128 bits).
   It is NEVER printed, logged, or written outside the gitignored `sealed_store/`.
+- Optional `--arm-map <path>` maps config pseudonyms (`ARM_1..ARM_4`) to local clip filename prefixes. It is read
+  once at session start into the sealed store and is never served, logged, or rendered on any route or page.
 - From that secret seed come:
   1. Per-item slot orders and Latin-square / 6-permutation counterbalancing (`generate_session_slot_orders`)
   2. Per-session salted clip names (`clip_<salted_token>.mp4`)
 - Clips are served under those salted names (`/clip/<salted_name>`) from a **sealed manifest**
   (`arm`, `original_sha256`, `salted_name`) stored inside the sealed store, which is NEVER sent to the browser.
 - Every clip is verified against the sealed manifest's `original_sha256` at load (`REFUSED AT LOAD` on mismatch).
-- Strictly blind `/api/state` and rater screens (zero study internals, 12px minimum font size, "Item N / 43").
-- Pilot mode isolated to `pilot_answers_<date>.jsonl`, append-only answers with crash-safe resume, and `unblind.py`
-  reading only the sealed store.
+- Separate rater and operator surfaces (Card tm item 1):
+  - Why separate ports: Hosting operator endpoints (`/api/operator/*`) and exports (`/api/export/*`, which carry
+    `cell_id`s with `-warmup` and `-rep2` suffixes) on the same port as the rater surface exposes study internals
+    to any accidental link, script, or URL navigation in the rater's browser. Binding the operator surface to a
+    separate localhost port—started only when `--operator-port` is explicitly passed and gated by a per-start
+    cryptographic token printed solely to the operator's terminal—guarantees by construction that the rater port
+    has zero code paths for operator metadata or session exports (`404 Not Found` with and without a token).
+- Test hooks out of the production build (Card tm item 3):
+  - `?unlock=1`, `window.__blindpanel`, and test helpers exist ONLY when the server is started with the explicit
+    `--enable-test-hooks` flag (`enable_test_hooks=True`), which the browser cannot set. In production mode
+    (the default), `/app.js` contains zero references to them.
 """
 from __future__ import annotations
 
@@ -40,7 +50,75 @@ from blindpanel.schema import (
     validate_and_normalize_config,
     verify_bws3_counterbalancing,
 )
-from blindpanel.unblind import canonical_map_hash, load_jsonl_safe, reconstruct_session_answers
+from blindpanel.unblind import (
+    canonical_map_hash,
+    canonical_sealed_manifest_sha256,
+    load_jsonl_safe,
+    reconstruct_session_answers,
+)
+
+# Explicit route tables for the Rater port and the separate Operator port (used by handlers and crawl tests)
+RATER_GET_ROUTES: Tuple[str, ...] = (
+    "/",
+    "/index.html",
+    "/styles.css",
+    "/app.js",
+    "/api/state",
+)
+
+RATER_POST_ROUTES: Tuple[str, ...] = (
+    "/api/session/start",
+    "/api/session/resume_break",
+    "/api/session/start_block2",
+    "/api/session/decline_block2",
+    "/api/submit",
+    "/api/step",
+    "/api/undo",
+    "/api/flag_flawed",
+    "/api/note",
+)
+
+OPERATOR_GET_ROUTES: Tuple[str, ...] = (
+    "/api/operator/preflight",
+    "/api/operator/audit",
+    "/api/export/csv",
+    "/api/export/jsonl",
+)
+
+OPERATOR_POST_ROUTES: Tuple[str, ...] = (
+    "/api/operator/override",
+)
+
+_TEST_HOOKS_SLOT_MARKER = "// __BLINDPANEL_TEST_HOOKS_SLOT__"
+
+_TEST_HOOKS_JS_SNIPPET = """
+  if (params.get("unlock") === "1") {
+    firstPlayCompleted = true;
+  }
+  window.__blindpanel = {
+    unlockVotingForTest: () => {
+      firstPlayCompleted = true;
+      refreshSelectionAndLayoutInPlace();
+    },
+    setSelectionsForTest: (best, worst, q2Map, notesText) => {
+      firstPlayCompleted = true;
+      draftBest = best;
+      draftWorst = worst;
+      if (q2Map) draftQ2 = Object.assign({}, q2Map);
+      if (notesText != null) {
+        draftNotes = notesText;
+        const inp = document.getElementById("notes-input");
+        if (inp) inp.value = notesText;
+      }
+      refreshSelectionAndLayoutInPlace();
+    },
+    setLayoutMode: (mode, flipLetter) => {
+      manualLayoutOverride = mode;
+      if (flipLetter) activeFlipLetter = flipLetter;
+      preserveVideoTimeAcrossRerender(() => renderActiveRatingStage(serverState));
+    },
+  };
+"""
 
 
 def sha256_file(path: str) -> str:
@@ -98,6 +176,28 @@ def _derive_salted_clip_name(secret_seed_hex: str, global_index: int, arm_name: 
     return f"clip_{digest}.mp4"
 
 
+def _load_arm_map_at_session_start(arm_map_path: Optional[str]) -> Optional[Dict[str, str]]:
+    """Read `--arm-map <path>` once at session start. Returns a dict mapping config arm pseudonyms
+    to local clip filename prefixes."""
+    if not arm_map_path:
+        return None
+    abs_map_path = os.path.abspath(arm_map_path)
+    if not os.path.isfile(abs_map_path):
+        raise ValueError(f"REFUSED AT LOAD: arm-map file not found: {abs_map_path}")
+    with open(abs_map_path, "r", encoding="utf-8") as f:
+        raw_map = json.load(f)
+    if not isinstance(raw_map, dict) or not raw_map:
+        raise ValueError("REFUSED AT LOAD: arm-map file must be a non-empty JSON object mapping arm pseudonyms to prefixes")
+    cleaned: Dict[str, str] = {}
+    for k, v in raw_map.items():
+        ks = str(k).strip()
+        vs = str(v).strip()
+        if not ks or not vs:
+            raise ValueError("REFUSED AT LOAD: arm-map keys and values must be non-empty strings")
+        cleaned[ks] = vs
+    return cleaned
+
+
 class BlindPanelSession:
     """Thread-safe state manager for live and pilot blindpanel sessions."""
 
@@ -107,6 +207,7 @@ class BlindPanelSession:
         sealed_map_path: str,
         answers_path: str,
         clips_dir: Optional[str] = None,
+        arm_map_path: Optional[str] = None,
         pilot_answers_path: Optional[str] = None,
         audit_log_path: Optional[str] = None,
         verify_clip_shape: bool = False,
@@ -116,6 +217,9 @@ class BlindPanelSession:
         self.sealed_map_path = os.path.abspath(sealed_map_path)
         self.answers_path = os.path.abspath(answers_path)
         self.clips_dir = os.path.abspath(clips_dir) if clips_dir else None
+
+        # Read `--arm-map` once at session start; stored only inside the sealed store and never exposed on any route
+        loaded_arm_map = _load_arm_map_at_session_start(arm_map_path)
 
         date_tag = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
         ans_dir = os.path.dirname(self.answers_path)
@@ -147,8 +251,8 @@ class BlindPanelSession:
         self.salted_clip_routes: Dict[str, str] = {}
         self.verified_clip_count = 0
 
-        self._hydrate_item_clips()
-        self.sealed_map = self._init_or_load_sealed_store()
+        self._hydrate_item_clips(arm_map=loaded_arm_map)
+        self.sealed_map = self._init_or_load_sealed_store(arm_map=loaded_arm_map)
         self._verify_all_clips_against_sealed_manifest()
 
         # Runtime state for Live ("live") and Pilot ("pilot") modes
@@ -177,14 +281,14 @@ class BlindPanelSession:
             return cand
         return os.path.abspath(rel_or_abs)
 
-    def _hydrate_item_clips(self) -> None:
+    def _hydrate_item_clips(self, arm_map: Optional[Dict[str, str]] = None) -> None:
         """Resolve clip files for each item either from explicit item['arms'] or by discovering clips in `clips_dir`."""
-        discovery_Cache: Dict[Tuple[str, Tuple[str, ...]], Dict[str, Dict[str, str]]] = {}
+        discovery_cache: Dict[Tuple[str, Tuple[str, ...]], Dict[str, Dict[str, str]]] = {}
         for item in self.flat_items:
             blk = self.blocks[item["block_index"]]
             blk_arms = list(blk["arms"])
             if item["arms"] is not None:
-                for arm_name, spec in item["arms"].items():
+                for _arm_name, spec in item["arms"].items():
                     resolved = self._resolve_clip_path(spec["path"])
                     spec["resolved_path"] = resolved
             else:
@@ -194,16 +298,17 @@ class BlindPanelSession:
                         "without per-item clip paths; pass --clips-dir <dir> to locate the session clips."
                     )
                 cache_key = (item["base_cell_id"], tuple(blk_arms))
-                if cache_key not in discovery_Cache:
+                if cache_key not in discovery_cache:
                     try:
-                        discovery_Cache[cache_key] = discover_clips_in_dir(
+                        discovery_cache[cache_key] = discover_clips_in_dir(
                             self.clips_dir,
                             arms=blk_arms,
                             base_cell_id=item["base_cell_id"],
+                            arm_map=arm_map,
                         )
                     except FileNotFoundError as exc:
                         raise ValueError(f"REFUSED AT LOAD: missing clip file: {exc}") from exc
-                discovered = discovery_Cache[cache_key]
+                discovered = discovery_cache[cache_key]
                 item["arms"] = {
                     arm_name: {
                         "path": discovered[arm_name]["path"],
@@ -213,13 +318,15 @@ class BlindPanelSession:
                     for arm_name in blk_arms
                 }
 
-    def _init_or_load_sealed_store(self) -> Dict[str, Any]:
+    def _init_or_load_sealed_store(self, arm_map: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """Generate or resume the sealed store (`sealed_map_*.bin`) and its sealed manifest.
 
-        Rule 2:
+        Rule 2 & Card tm item 4:
         - At session start, a NEW secret seed is generated (`secrets.token_bytes(32)`, 256 bits >= 128 bits).
           It is never printed, logged, or written outside the sealed store (gitignored).
-        - From it come the per-item slot orders, the counterbalancing, and the per-session salted clip names.
+        - If `--arm-map` was provided at session start, the mapping is stored ONLY inside `sealed_map["arm_map"]`
+          in the gitignored sealed store and never served or logged.
+        - From `secret_seed` come the per-item slot orders, the counterbalancing, and the per-session salted clip names.
         - Clips are served under those salted names from a sealed manifest (`arm`, `original_sha256`, `salted_name`),
           which is never sent to the browser.
         """
@@ -336,18 +443,23 @@ class BlindPanelSession:
                 "letter_to_salted_name": letter_to_salted_name,
             })
 
-        smap = {
+        manifest_sha256 = canonical_sealed_manifest_sha256(sealed_manifest)
+        smap: Dict[str, Any] = {
             "schema": "blindpanel-sealed-map-v1",
             "study_id": self.study_id,
             "arena": self.study_id,
             "title": self.title,
             "config_sha256": self.config_sha256,
+            "sealed_manifest_sha256": manifest_sha256,
             "secret_seed": secret_seed_hex,
             "created_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "arms": all_study_arms,
             "sealed_manifest": sealed_manifest,
             "rows": sealed_rows,
         }
+        if arm_map is not None:
+            smap["arm_map"] = dict(arm_map)
+
         sealed_dir = os.path.dirname(self.sealed_map_path)
         if sealed_dir:
             os.makedirs(sealed_dir, exist_ok=True)
@@ -496,11 +608,10 @@ class BlindPanelSession:
         self.interstitial_by_mode[mode] = None
 
     # ------------------------------------------------------------------
-    # Pre-Flight & Audit methods
+    # Pre-Flight & Audit methods (Operator surface only)
     # ------------------------------------------------------------------
     def get_preflight_status(self) -> Dict[str, Any]:
-        """Build operator pre-flight report. Names arms, shows required actions, estimated seconds vs clip length,
-        and flags any item whose required action exceeds clip duration."""
+        """Build operator pre-flight report. Served ONLY on the separate operator port."""
         seen_prompts: Dict[str, Dict[str, Any]] = {}
         for item in self.flat_items:
             if item["is_warmup"]:
@@ -639,7 +750,7 @@ class BlindPanelSession:
         """Return strictly blind rater state.
 
         Contains ZERO arm names, file paths, sha256s, warm-up indicators, repeat flags,
-        expected durations, or sealed manifest mappings. Clips are referenced solely by
+        cell_ids, expected durations, or sealed manifest mappings. Clips are referenced solely by
         their per-session salted clip names (`/clip/<salted_name>`).
         """
         with self.lock:
@@ -1026,7 +1137,7 @@ class BlindPanelSession:
         return self.get_public_state(mode=mode, requested_global_index=global_index)
 
     def export_blind_csv(self, mode: str = "live") -> str:
-        """Export blind ratings CSV (anonymized clip letters only, never arm names)."""
+        """Export blind ratings CSV (Operator port only)."""
         with self.lock:
             mode = "pilot" if mode == "pilot" else "live"
             states = self.item_states_by_mode[mode]
@@ -1068,6 +1179,7 @@ class BlindPanelSession:
             return buf.getvalue()
 
     def export_blind_jsonl(self, mode: str = "live") -> str:
+        """Export raw session event log JSONL (Operator port only; carries cell_id)."""
         with self.lock:
             mode = "pilot" if mode == "pilot" else "live"
             lines = [json.dumps(ev, separators=(",", ":")) for ev in self.events_by_mode[mode]]
@@ -1078,7 +1190,18 @@ class BlindPanelSession:
             return self.salted_clip_routes.get(salted_name)
 
 
-class BlindPanelRequestHandler(BaseHTTPRequestHandler):
+def _render_rater_app_js(static_dir: str, enable_test_hooks: bool = False) -> str:
+    """Return the rater JS bundle. In production (`enable_test_hooks=False`), strips the test-hook slot
+    so zero references to `?unlock=1` or `window.__blindpanel` exist in the served JS."""
+    raw_js_path = os.path.join(static_dir, "app.js")
+    with open(raw_js_path, "r", encoding="utf-8") as f:
+        src = f.read()
+    if enable_test_hooks:
+        return src.replace(_TEST_HOOKS_SLOT_MARKER, _TEST_HOOKS_JS_SNIPPET)
+    return src.replace(_TEST_HOOKS_SLOT_MARKER, "")
+
+
+class _BaseBlindPanelHTTPHandler(BaseHTTPRequestHandler):
     session: BlindPanelSession
     static_dir: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -1094,7 +1217,13 @@ class BlindPanelRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_text(self, text: str, content_type: str, status: int = HTTPStatus.OK, filename: Optional[str] = None) -> None:
+    def _send_text(
+        self,
+        text: str,
+        content_type: str,
+        status: int = HTTPStatus.OK,
+        filename: Optional[str] = None,
+    ) -> None:
         body = text.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -1146,19 +1275,36 @@ class BlindPanelRequestHandler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
 
+
+class BlindPanelRequestHandler(_BaseBlindPanelHTTPHandler):
+    """Rater-surface HTTP handler.
+
+    Serves ONLY rater static assets (`/`, `/index.html`, `/styles.css`, `/app.js`),
+    strictly blind `/api/state`, rater session/rating POST endpoints, and salted clips (`/clip/<salted_name>`).
+    Returns `404 Not Found` on all `/api/operator/*`, `/api/export/*`, answers files, and sealed files
+    both with and without a token.
+    """
+
+    enable_test_hooks: bool = False
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
         qs = parse_qs(parsed.query)
         mode = qs.get("mode", ["live"])[0]
 
-        # Explicitly block any attempt to read sealed_map, sealed_manifest, or .bin files over HTTP
+        # Explicitly block any attempt to read sealed_map, sealed_manifest, answers, operator, or export routes
         lowered = path.lower()
         if (
             "sealed_map" in lowered
             or "sealed_manifest" in lowered
             or "sealed_store" in lowered
-            or lowered.endswith(".sealed.jsonl")
+            or "arm_map" in lowered
+            or "arm-map" in lowered
+            or "answers" in lowered
+            or lowered.startswith("/api/operator")
+            or lowered.startswith("/api/export")
+            or lowered.endswith(".jsonl")
             or lowered.endswith(".bin")
         ):
             self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
@@ -1171,32 +1317,13 @@ class BlindPanelRequestHandler(BaseHTTPRequestHandler):
             self._send_file(os.path.join(self.static_dir, "styles.css"), "text/css; charset=utf-8")
             return
         if path == "/app.js":
-            self._send_file(os.path.join(self.static_dir, "app.js"), "application/javascript; charset=utf-8")
+            js_body = _render_rater_app_js(self.static_dir, enable_test_hooks=self.enable_test_hooks)
+            self._send_text(js_body, "application/javascript; charset=utf-8")
             return
 
         if path == "/api/state":
             req_idx = int(qs["global_index"][0]) if "global_index" in qs else None
             self._send_json(self.session.get_public_state(mode=mode, requested_global_index=req_idx))
-            return
-
-        if path == "/api/operator/preflight":
-            self._send_json(self.session.get_preflight_status())
-            return
-
-        if path == "/api/operator/audit":
-            self._send_json(self.session.get_operator_audit())
-            return
-
-        if path == "/api/export/csv":
-            csv_data = self.session.export_blind_csv(mode=mode)
-            fname = f"{self.session.study_id}_{mode}_blind.csv"
-            self._send_text(csv_data, "text/csv; charset=utf-8", filename=fname)
-            return
-
-        if path == "/api/export/jsonl":
-            jsonl_data = self.session.export_blind_jsonl(mode=mode)
-            fname = f"{self.session.study_id}_{mode}_answers.jsonl"
-            self._send_text(jsonl_data, "application/x-ndjson; charset=utf-8", filename=fname)
             return
 
         if path.startswith("/clip/") and path.endswith(".mp4"):
@@ -1215,6 +1342,12 @@ class BlindPanelRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # Rater port serves no /api/operator/* at all: 404 with and without a token
+        if path.lower().startswith("/api/operator") or path.lower().startswith("/api/export"):
+            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+            return
+
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length) if length > 0 else b"{}"
         try:
@@ -1257,11 +1390,89 @@ class BlindPanelRequestHandler(BaseHTTPRequestHandler):
                         mode=mode,
                     )
                 )
-            elif path == "/api/operator/override":
+            else:
+                self._send_json({"error": "Unknown endpoint"}, status=HTTPStatus.NOT_FOUND)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+
+
+class BlindPanelOperatorRequestHandler(_BaseBlindPanelHTTPHandler):
+    """Operator-surface HTTP handler running on a separate localhost port.
+
+    Every request must carry the per-start `operator_token` (via `X-Operator-Token` header,
+    `Authorization: Bearer <token>`, or `?token=<token>`). Requests without a valid token are
+    refused with `403 Forbidden`.
+    """
+
+    operator_token: str = ""
+
+    def _check_operator_auth(self, qs: Dict[str, List[str]]) -> bool:
+        expected = self.operator_token
+        if not expected:
+            return False
+        hdr_tok = (self.headers.get("X-Operator-Token") or "").strip()
+        if hdr_tok and hmac.compare_digest(hdr_tok, expected):
+            return True
+        auth_hdr = (self.headers.get("Authorization") or "").strip()
+        if auth_hdr.lower().startswith("bearer "):
+            bearer_tok = auth_hdr[7:].strip()
+            if bearer_tok and hmac.compare_digest(bearer_tok, expected):
+                return True
+        qs_tok = (qs.get("token", [""])[0] or qs.get("operator_token", [""])[0]).strip()
+        if qs_tok and hmac.compare_digest(qs_tok, expected):
+            return True
+        return False
+
+    def do_GET(self) -> None:
+        parsed = urlparse(self.path)
+        path = parsed.path
+        qs = parse_qs(parsed.query)
+        if not self._check_operator_auth(qs):
+            self._send_json({"error": "Forbidden: valid operator token required"}, status=HTTPStatus.FORBIDDEN)
+            return
+
+        mode = qs.get("mode", ["live"])[0]
+        if path == "/api/operator/preflight":
+            self._send_json(self.session.get_preflight_status())
+            return
+        if path == "/api/operator/audit":
+            self._send_json(self.session.get_operator_audit())
+            return
+        if path == "/api/export/csv":
+            csv_data = self.session.export_blind_csv(mode=mode)
+            fname = f"{self.session.study_id}_{mode}_blind.csv"
+            self._send_text(csv_data, "text/csv; charset=utf-8", filename=fname)
+            return
+        if path == "/api/export/jsonl":
+            jsonl_data = self.session.export_blind_jsonl(mode=mode)
+            fname = f"{self.session.study_id}_{mode}_answers.jsonl"
+            self._send_text(jsonl_data, "application/x-ndjson; charset=utf-8", filename=fname)
+            return
+
+        self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+
+    def do_POST(self) -> None:
+        parsed = urlparse(self.path)
+        path = parsed.path
+        qs = parse_qs(parsed.query)
+        if not self._check_operator_auth(qs):
+            self._send_json({"error": "Forbidden: valid operator token required"}, status=HTTPStatus.FORBIDDEN)
+            return
+
+        length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(length) if length > 0 else b"{}"
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except Exception as exc:
+            self._send_json({"error": f"Invalid JSON: {exc}"}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        try:
+            if path == "/api/operator/override":
                 reason = str(payload.get("reason", ""))
                 self._send_json(self.session.record_preflight_override(reason))
             else:
-                self._send_json({"error": "Unknown endpoint"}, status=HTTPStatus.NOT_FOUND)
+                self._send_json({"error": "Unknown operator endpoint"}, status=HTTPStatus.NOT_FOUND)
         except ValueError as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
 
@@ -1270,12 +1481,32 @@ def create_http_server(
     session: BlindPanelSession,
     host: str = "127.0.0.1",
     port: int = 8765,
+    enable_test_hooks: bool = False,
 ) -> ThreadingHTTPServer:
-    class BoundHandler(BlindPanelRequestHandler):
+    """Create the Rater-surface HTTP server."""
+    class BoundRaterHandler(BlindPanelRequestHandler):
         pass
 
-    BoundHandler.session = session
-    return ThreadingHTTPServer((host, port), BoundHandler)
+    BoundRaterHandler.session = session
+    BoundRaterHandler.enable_test_hooks = bool(enable_test_hooks)
+    return ThreadingHTTPServer((host, port), BoundRaterHandler)
+
+
+def create_operator_http_server(
+    session: BlindPanelSession,
+    host: str = "127.0.0.1",
+    port: int = 0,
+    operator_token: Optional[str] = None,
+) -> Tuple[ThreadingHTTPServer, str]:
+    """Create the separate Operator-surface HTTP server and its per-start cryptographic token."""
+    token = operator_token or secrets.token_hex(24)
+
+    class BoundOperatorHandler(BlindPanelOperatorRequestHandler):
+        pass
+
+    BoundOperatorHandler.session = session
+    BoundOperatorHandler.operator_token = token
+    return ThreadingHTTPServer((host, port), BoundOperatorHandler), token
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -1285,6 +1516,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--clips-dir",
         default=None,
         help="Directory containing clip MP4 files when --config is a public study design config",
+    )
+    parser.add_argument(
+        "--arm-map",
+        default=None,
+        help="Path to local gitignored JSON file mapping config arm pseudonyms (ARM_1..ARM_4) to clip filename prefixes",
     )
     parser.add_argument(
         "--sealed-map",
@@ -1302,7 +1538,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Path to write/read pilot_answers_<date>.jsonl",
     )
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (must be 127.0.0.1 / localhost)")
-    parser.add_argument("--port", type=int, default=8765, help="Bind port (0 for random free port)")
+    parser.add_argument("--port", type=int, default=8765, help="Rater bind port (0 for random free port)")
+    parser.add_argument(
+        "--operator-port",
+        type=int,
+        default=None,
+        help="Optional separate localhost port for the operator surface (preflight, audit, exports)",
+    )
+    parser.add_argument(
+        "--enable-test-hooks",
+        action="store_true",
+        help="Enable ?unlock=1 and window.__blindpanel in served /app.js (test harness only; never on by default)",
+    )
     parser.add_argument(
         "--verify-clip-shape",
         action="store_true",
@@ -1314,6 +1561,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("REFUSED: blindpanel binds only to 127.0.0.1 or localhost.", file=sys.stderr)
         return 2
 
+    if args.operator_port is not None and args.operator_port != 0 and args.operator_port == args.port:
+        print("REFUSED: --operator-port must be distinct from the rater --port.", file=sys.stderr)
+        return 2
+
     date_tag = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
     sealed_map_path = args.sealed_map or os.path.join("sealed_store", f"sealed_map_{date_tag}.bin")
 
@@ -1323,6 +1574,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             sealed_map_path=sealed_map_path,
             answers_path=args.answers,
             clips_dir=args.clips_dir,
+            arm_map_path=args.arm_map,
             pilot_answers_path=args.pilot_answers,
             verify_clip_shape=args.verify_clip_shape,
         )
@@ -1330,18 +1582,38 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(str(exc), file=sys.stderr)
         return 1
 
-    httpd = create_http_server(session, host=args.host, port=args.port)
+    httpd = create_http_server(
+        session,
+        host=args.host,
+        port=args.port,
+        enable_test_hooks=args.enable_test_hooks,
+    )
     actual_port = httpd.server_address[1]
-    print(f"blindpanel listening on http://{args.host}:{actual_port}")
-    print(f"  Rater View      : http://{args.host}:{actual_port}/?view=rater")
-    print(f"  Pilot View      : http://{args.host}:{actual_port}/?view=pilot")
-    print(f"  Pre-Flight Gate : http://{args.host}:{actual_port}/?view=preflight")
-    print(f"  Operator Audit  : http://{args.host}:{actual_port}/?view=audit")
+    print(f"blindpanel rater server listening on http://{args.host}:{actual_port}")
+    print(f"  Rater View : http://{args.host}:{actual_port}/?view=rater")
+    print(f"  Pilot View : http://{args.host}:{actual_port}/?view=pilot")
+
+    op_httpd: Optional[ThreadingHTTPServer] = None
+    if args.operator_port is not None:
+        op_httpd, op_token = create_operator_http_server(
+            session,
+            host=args.host,
+            port=args.operator_port,
+        )
+        actual_op_port = op_httpd.server_address[1]
+        op_thread = threading.Thread(target=op_httpd.serve_forever, daemon=True)
+        op_thread.start()
+        print(f"blindpanel operator server listening on http://{args.host}:{actual_op_port}")
+        print(f"  Operator Token (terminal only): {op_token}")
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        if op_httpd is not None:
+            op_httpd.shutdown()
+            op_httpd.server_close()
         httpd.server_close()
     return 0
 

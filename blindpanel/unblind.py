@@ -1,9 +1,10 @@
-"""unblind.py — Offline unblinding tool and cryptographic salt/map_hash verifier for blindpanel.
+"""unblind.py — Offline unblinding tool and cryptographic salt/map_hash/sealed_manifest verifier for blindpanel.
 
 Reads ONLY the sealed store (`sealed_map_*.bin`) and `answers.jsonl` to produce `unblinded_results.json`.
 Never writes or exposes `secret_seed` in the unblinded output.
-Verifies per-row cryptographic salt and map_hash before joining, ignores unrecorded warm-up
-practice rows in recorded metrics while reporting warm-up completion counts, and computes:
+Verifies per-row cryptographic salt and map_hash AND validates the sealed manifest's integrity (sha256)
+before joining, ignores unrecorded warm-up practice rows in recorded metrics while reporting warm-up
+completion counts, and computes:
 - Per-arm rank statistics (mean rank, median rank, rank counts, Borda score, best/worst shares)
 - Pairwise win matrix across arms
 - Per-arm Question 2 action-completion breakdown on flagged rows (M1-M4)
@@ -16,9 +17,12 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import statistics
 import sys
 from typing import Any, Dict, List, Optional, Tuple
+
+_HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def canonical_map_hash(letter_to_arm: Dict[str, str], salt: str) -> str:
@@ -29,6 +33,48 @@ def canonical_map_hash(letter_to_arm: Dict[str, str], salt: str) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def canonical_sealed_manifest_sha256(sealed_manifest: List[Dict[str, Any]]) -> str:
+    """Compute deterministic SHA-256 over the canonicalized `sealed_manifest` entries."""
+    normalized = [
+        {
+            "global_index": int(entry["global_index"]),
+            "cell_id": str(entry["cell_id"]),
+            "letter": str(entry["letter"]),
+            "arm": str(entry["arm"]),
+            "original_sha256": str(entry["original_sha256"]).lower(),
+            "salted_name": str(entry["salted_name"]),
+        }
+        for entry in sealed_manifest
+    ]
+    payload = json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def validate_sealed_manifest_integrity(sealed_map: Dict[str, Any]) -> None:
+    """Validate the sealed manifest's integrity (sha256) before unblinding, and refuse on any mismatch."""
+    manifest = sealed_map.get("sealed_manifest")
+    if manifest is not None:
+        if not isinstance(manifest, list) or len(manifest) == 0:
+            raise ValueError("Tamper check failed: sealed_manifest must be a non-empty list")
+
+        for idx, entry in enumerate(manifest):
+            if not isinstance(entry, dict):
+                raise ValueError(f"Tamper check failed: sealed_manifest[{idx}] is not a dict")
+            orig_sha = str(entry.get("original_sha256", "")).lower()
+            if not _HEX64_RE.match(orig_sha) or orig_sha == ("0" * 64):
+                raise ValueError(
+                    f"Tamper check failed on sealed_manifest[{idx}]: invalid original_sha256 '{orig_sha}'"
+                )
+
+        expected_manifest_sha = sealed_map.get("sealed_manifest_sha256")
+        actual_manifest_sha = canonical_sealed_manifest_sha256(manifest)
+        if expected_manifest_sha is not None and actual_manifest_sha != expected_manifest_sha:
+            raise ValueError(
+                "Tamper check failed on sealed_manifest_sha256: "
+                f"expected {expected_manifest_sha}, got {actual_manifest_sha}"
+            )
 
 
 def load_jsonl_safe(path: str) -> Tuple[List[Dict[str, Any]], int]:
@@ -192,7 +238,9 @@ def reconstruct_session_answers(
 
 
 def unblind_session(sealed_map: Dict[str, Any], events: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Verify cryptographic hashes and unblind all completed items across blocks."""
+    """Verify cryptographic hashes (both per-row map_hash and sealed_manifest sha256) and unblind all completed items."""
+    validate_sealed_manifest_integrity(sealed_map)
+
     rows_meta = sealed_map.get("rows", [])
     for idx, rmeta in enumerate(rows_meta):
         g_idx = rmeta.get("global_index", rmeta.get("row_index", idx))
@@ -421,6 +469,7 @@ def unblind_session(sealed_map: Dict[str, Any], events: List[Dict[str, Any]]) ->
         "study_id": sealed_map.get("study_id", sealed_map.get("arena", "blindpanel-study")),
         "arena": sealed_map.get("study_id", sealed_map.get("arena", "blindpanel-study")),
         "config_sha256": sealed_map.get("config_sha256"),
+        "sealed_manifest_sha256": sealed_map.get("sealed_manifest_sha256"),
         "total_items": len(rows_meta),
         "warmup_completed_items": warmup_completed_count,
         "completed_rows": recorded_completed_count,

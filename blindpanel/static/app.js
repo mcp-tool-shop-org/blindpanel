@@ -3,11 +3,24 @@
 
   const root = document.getElementById("app-root");
   const params = new URLSearchParams(window.location.search);
-  let activeView = params.get("view") || "rater"; // "rater" | "pilot" | "preflight" | "audit"
+  let activeView = params.get("view") === "pilot" ? "pilot" : "rater";
   let activeMode = activeView === "pilot" ? "pilot" : "live";
 
   // Detail visibility threshold: 3 native 832px tiles + 2*12px gaps + 2*14px stage padding = 2548px
   const NATIVE_3UP_MIN_WIDTH = 2548;
+
+  // Inter-trial 50% grey adaptation curtain duration (700 ms per DESIGN-cosmos3-quant-human-test-2026-10-30.md:247)
+  const INTER_TRIAL_CURTAIN_MS = 700;
+
+  // Map Shift+1-3 (both key and code) to 0-based clip indices for Worst selection in 3-Up mode
+  const SHIFT_DIGIT_MAP = {
+    "!": 0,
+    "@": 1,
+    "#": 2,
+    Digit1: 0,
+    Digit2: 1,
+    Digit3: 2,
+  };
 
   // Layout override from URL (`?layout=flip` or `?layout=3up` or `?layout=native`) or automatic
   let manualLayoutOverride = params.get("layout") || null; // null = auto width detection
@@ -18,8 +31,6 @@
 
   // Session & Draft State
   let serverState = null;
-  let preflightData = null;
-  let auditData = null;
   let currentGlobalIndex = null;
 
   // Per-item draft answers preserved across layout switches and resizes
@@ -93,16 +104,6 @@
   }
 
   async function loadViewData() {
-    if (activeView === "preflight") {
-      preflightData = await apiGet("/api/operator/preflight");
-      renderPreflightView();
-      return;
-    }
-    if (activeView === "audit") {
-      auditData = await apiGet("/api/operator/audit");
-      renderOperatorAuditView();
-      return;
-    }
     activeMode = activeView === "pilot" ? "pilot" : "live";
     const reqIdx = params.get("item") != null ? `&global_index=${encodeURIComponent(params.get("item"))}` : "";
     const st = await apiGet(`/api/state?mode=${activeMode}${reqIdx}`);
@@ -131,281 +132,11 @@
         }
       }
 
-      // Unlock voting immediately if require_full_play is false or if ?unlock=1 is passed for static inspection
-      firstPlayCompleted = !st.require_full_play || params.get("unlock") === "1" || st.completed;
+      firstPlayCompleted = !st.require_full_play || Boolean(st.completed);
       maxWatchedTime = 0;
     }
 
     renderRaterOrPilotScreen();
-  }
-
-  // ------------------------------------------------------------------
-  // Operator Pre-Flight View (`/?view=preflight`)
-  // ------------------------------------------------------------------
-  function renderPreflightView() {
-    const pf = preflightData;
-    if (!pf) return;
-
-    const b1 = pf.blocks_summary[0] || {};
-    const b2 = pf.blocks_summary[1] || null;
-    const headerSummary = b2
-      ? `${pf.title} — ${b1.arms.length} Arms (Block 1: ${b1.arms.join(", ")} · ${b1.num_items} Items) + optional Block 2 (${b2.arms.join(" vs ")} · ${b2.num_items} Items)`
-      : `${pf.title} — ${b1.arms.length} Arms (${b1.arms.join(", ")} · ${b1.num_items} Items)`;
-
-    const gateHtml = pf.live_start_blocked
-      ? `
-      <section class="preflight-gate-bar" aria-label="Session Start Gate">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="badge badge-flag" style="font-size: 12px; font-weight: 800;">⚠ ${pf.flagged_count} ITEM FLAGGED</span>
-          <div>
-            <div style="font-weight: 800; font-size: 12.5px;">
-              Live rating cannot start while any item is flagged (${escapeHtml(pf.flagged_prompt_ids.join(", "))} exceeds ${pf.clip_spec.seconds} s clip length).
-            </div>
-            <div style="font-size: 12px;">
-              Record a logged operator override below or resolve the flagged item before starting a live session.
-            </div>
-          </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-          <button type="button" class="btn" id="btn-open-pilot">▶ Open Pilot Mode</button>
-          <button type="button" class="btn btn-disabled" id="btn-start-live-preflight" disabled aria-disabled="true">
-            🔒 Start Live Session (Disabled)
-          </button>
-        </div>
-      </section>`
-      : `
-      <section class="override-strip" aria-label="Session Start Ready">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="badge badge-pass mono">✓ PRE-FLIGHT READY</span>
-          <span style="font-weight: 700; font-size: 12.5px;">
-            ${pf.override_recorded ? `Logged override active: "${escapeHtml(pf.latest_override.reason)}"` : "All live items fit within clip duration."}
-          </span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button type="button" class="btn" id="btn-open-pilot">▶ Open Pilot Mode</button>
-          <button type="button" class="btn btn-primary" id="btn-start-live-preflight">▶ Start Live Session</button>
-        </div>
-      </section>`;
-
-    const rowsHtml = pf.rows
-      .map((r) => {
-        const isFlagged = r.flagged;
-        const badgeHtml = isFlagged
-          ? `<span class="badge badge-flag mono">✕ FLAGGED (&gt;${r.clip_seconds}s)</span>`
-          : `<span class="badge badge-pass mono">✓ PASS</span>`;
-        const qDesc = r.ask_q2
-          ? `Q1 (${b1.method}) + Q2 ("How far does the robot get with the action within the 2.5 s clip?")`
-          : `Q1 (${b1.method})`;
-        return `
-        <tr class="${isFlagged ? "row-flagged" : ""}">
-          <td class="mono"><strong>${escapeHtml(r.prompt_id)}</strong></td>
-          <td>${escapeHtml(r.prompt_type)}</td>
-          <td>${escapeHtml(r.required_action)}</td>
-          <td>${escapeHtml(r.prompt)}</td>
-          <td class="mono">${escapeHtml(r.estimated_seconds)} vs ${r.clip_seconds}s</td>
-          <td>${escapeHtml( qDesc )}</td>
-          <td>${badgeHtml}</td>
-        </tr>`;
-      })
-      .join("");
-
-    root.innerHTML = `
-      <header class="top-bar" role="banner">
-        <div class="brand-group">
-          <span class="brand-title">blindpanel</span>
-          <span class="badge mono">v0.1.0</span>
-          <span class="badge">Operator Pre-Flight</span>
-        </div>
-        <div style="font-weight: 700; font-size: 12.5px;">${escapeHtml(headerSummary)}</div>
-        <div class="brand-group">
-          <button type="button" class="btn btn-sm" id="btn-goto-audit">Operator Audit</button>
-          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
-        </div>
-      </header>
-
-      <div class="integrity-bar" role="region" aria-label="Cryptographic and Media Integrity Verification">
-        <div class="integrity-items">
-          <span class="integrity-item">
-            <span class="badge badge-pass mono">✓ CLIPS VERIFIED</span>
-            <span class="mono">${pf.verified_clip_count} files SHA-256 OK (${pf.clip_spec.width}×${pf.clip_spec.height} @ ${pf.clip_spec.fps} fps, ${pf.clip_spec.frames} frames = <strong>${pf.clip_spec.seconds} s</strong>)</span>
-          </span>
-          <span class="integrity-item">
-            <span class="badge badge-lock mono">🔒 MAP SEALED</span>
-            <span class="mono">sealed_map.bin</span>
-          </span>
-          <span class="integrity-item">
-            <span class="badge mono">⚙ CONFIG HASH</span>
-            <span class="mono">sha256:${pf.config_sha256.slice(0, 16)}…</span>
-          </span>
-        </div>
-      </div>
-
-      <main class="preflight-main" role="main">
-        ${gateHtml}
-
-        <section class="override-strip" aria-label="Logged Override Controls">
-          <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-            <span class="badge badge-warn mono">LOGGED OVERRIDE</span>
-            <label for="override-reason" style="font-weight: 600; font-size: 12px; white-space: nowrap;">
-              Operator override reason (logged):
-            </label>
-            <input
-              id="override-reason"
-              type="text"
-              class="notes-input mono"
-              style="height: 32px; font-size: 12px;"
-              placeholder="Enter reason to override pre-flight flag…"
-              value="${pf.latest_override ? escapeHtml(pf.latest_override.reason) : ""}"
-              aria-label="Override reason for audit log"
-            >
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn btn-warn btn-sm" id="btn-record-override">
-              Record Logged Override &amp; Unlock Start
-            </button>
-          </div>
-        </section>
-
-        <div class="table-wrap" role="region" aria-label="Pre-flight Prompt and Clip Duration Table" tabindex="0">
-          <table class="preflight-table">
-            <thead>
-              <tr>
-                <th style="width: 48px;">ID</th>
-                <th style="width: 90px;">Type</th>
-                <th style="width: 180px;">Required Action</th>
-                <th>Prompt</th>
-                <th style="width: 130px;">Est. vs Clip</th>
-                <th style="width: 240px;">Rater Questions</th>
-                <th style="width: 120px;">Status</th>
-              </tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
-        </div>
-      </main>
-    `;
-
-    updateThemeButtons();
-    const btnPilot = document.getElementById("btn-open-pilot");
-    if (btnPilot) {
-      btnPilot.addEventListener("click", () => {
-        activeView = "pilot";
-        loadViewData();
-      });
-    }
-    const btnLive = document.getElementById("btn-start-live-preflight");
-    if (btnLive && !pf.live_start_blocked) {
-      btnLive.addEventListener("click", () => {
-        activeView = "rater";
-        loadViewData();
-      });
-    }
-    const btnAudit = document.getElementById("btn-goto-audit");
-    if (btnAudit) {
-      btnAudit.addEventListener("click", () => {
-        activeView = "audit";
-        loadViewData();
-      });
-    }
-    const btnOverride = document.getElementById("btn-record-override");
-    if (btnOverride) {
-      btnOverride.addEventListener("click", async () => {
-        const inp = document.getElementById("override-reason");
-        try {
-          preflightData = await apiPost("/api/operator/override", { reason: inp ? inp.value : "" });
-          renderPreflightView();
-        } catch (err) {
-          alert(err.message);
-        }
-      });
-    }
-    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
-  }
-
-  // ------------------------------------------------------------------
-  // Operator Audit View (`/?view=audit`)
-  // ------------------------------------------------------------------
-  function renderOperatorAuditView() {
-    const ad = auditData;
-    if (!ad) return;
-    root.innerHTML = `
-      <header class="top-bar" role="banner">
-        <div class="brand-group">
-          <span class="brand-title">blindpanel</span>
-          <span class="badge">Operator Post-Session Audit</span>
-        </div>
-        <div class="brand-group">
-          <button type="button" class="btn btn-sm" id="btn-back-preflight">← Pre-Flight</button>
-          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
-        </div>
-      </header>
-
-      <div class="integrity-bar" role="region" aria-label="Cryptographic Integrity Line">
-        <div class="integrity-items">
-          <span class="integrity-item">
-            <span class="badge badge-pass mono">✓ CLIPS VERIFIED</span>
-            <span class="mono">${ad.verified_clip_count} files SHA-256 OK</span>
-          </span>
-          <span class="integrity-item">
-            <span class="badge badge-lock mono">🔒 MAP SEALED</span>
-            <span class="mono">${escapeHtml(ad.sealed_map_filename)}</span>
-          </span>
-          <span class="integrity-item">
-            <span class="badge mono">⚙ CONFIG HASH</span>
-            <span class="mono">sha256:${ad.config_sha256.slice(0, 16)}…</span>
-          </span>
-        </div>
-      </div>
-
-      <main class="content-single-card" role="main">
-        <section class="panel-card" aria-labelledby="operator-audit-heading">
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-              <span class="badge badge-lock mono">OPERATOR / POST-SESSION AUDIT</span>
-              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">Study: ${escapeHtml(ad.study_id)}</span>
-            </div>
-
-            <h2 id="operator-audit-heading">Operator Audit &amp; Offline Unblinding</h2>
-
-            <div class="stat-grid">
-              <div class="stat-box">
-                <div class="stat-value">${ad.live_session.recorded_completed}</div>
-                <div class="stat-label">Live recorded items</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value">${ad. pilot_session.completed_items}</div>
-                <div class="stat-label">Pilot items (${escapeHtml(ad.pilot_session.pilot_answers_file)})</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value">${ad.live_session.flawed_or_noted_items.length}</div>
-                <div class="stat-label">Flagged / noted items</div>
-              </div>
-            </div>
-
-            <div style="background: var(--status-lock-bg); border: 1.5px solid var(--status-lock-border); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <span style="font-weight: 800; font-size: 12px; color: var(--status-lock-text);">
-                  🔒 Offline Unblinding (Browser Never Loads Arm Identity Map)
-                </span>
-                <a href="/api/export/jsonl?mode=live" class="btn btn-sm">⬇ Export Session Log (JSONL)</a>
-              </div>
-              <div class="mono" style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: 4px; padding: 6px 8px; font-size: 12px; line-height: 1.35;">
-                python -m blindpanel.unblind --sealed-map ${escapeHtml(ad.sealed_map_filename)} --answers ${escapeHtml(ad.live_session.answers_file)} --out unblinded_results.json
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-    `;
-    updateThemeButtons();
-    const btnBack = document.getElementById("btn-back-preflight");
-    if (btnBack) {
-      btnBack.addEventListener("click", () => {
-        activeView = "preflight";
-        loadViewData();
-      });
-    }
-    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
   }
 
   // ------------------------------------------------------------------
@@ -441,7 +172,7 @@
         <div class="pilot-banner-right mono">
           <span>Pilot Log Isolated</span>
           <span>|</span>
-          <span>Live answers.jsonl Untouched</span>
+          <span>Live Session Untouched</span>
         </div>
       </div>`;
   }
@@ -481,7 +212,7 @@
             <div class="stat-grid">
               <div class="stat-box">
                 <div class="stat-value">${totalInBlock} Items</div>
-                <div class="stat-label">Block ${st.block_number} session items</div>
+                <div class="stat-label">Total in this session</div>
               </div>
               <div class="stat-box">
                 <div class="stat-value">${st.k} Clips (${st.letters[0]}–${st.letters[st.letters.length - 1]})</div>
@@ -509,7 +240,7 @@
               <span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(st.counter_label)} ready</span>
             </div>
             <button type="button" class="btn btn-primary" id="btn-begin-session" ${st.live_start_blocked ? "disabled" : ""}>
-              ${st.live_start_blocked ? "🔒 Blocked by Pre-Flight" : "Begin Session ↵"}
+              ${st.live_start_blocked ? "🔒 Session Locked" : "Begin Session ↵"}
             </button>
           </div>
         </section>
@@ -621,7 +352,7 @@
   }
 
   function renderSessionCompleteInterstitial(st) {
-    // BUILD-MUST-DO item 1: Rater's session-complete card has "Session Complete" and ZERO operator navigation (no Return to Pre-Flight)
+    // Card tm (2): The rater export is removed entirely. The Session Complete view only thanks the rater and says the session is saved.
     const totalDone = st.block_total_items;
     root.innerHTML = `
       ${renderPilotBannerIfNeeded(st)}
@@ -653,21 +384,9 @@
               <span style="font-size: 12.5px; font-weight: 700;">100% Complete (Item ${totalDone} / ${totalDone})</span>
             </div>
 
-            <p style="color: var(--text-secondary); font-size: 13.5px; line-height: 1.5;">
-              Thank you. All responses for this session are saved and locked on disk. You can export the blind session files below or close this window safely.
+            <p id="session-saved-message" style="color: var(--text-secondary); font-size: 13.5px; line-height: 1.5;">
+              Thank you for completing the evaluation. Your session is saved on disk; you may close this window safely.
             </p>
-
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
-              <a href="/api/export/csv?mode=${activeMode}" class="btn btn-primary" id="btn-export-csv" style="justify-content: space-between; min-height: 40px;">
-                <span>⬇ Export Blind Answers (CSV)</span>
-                <span class="mono" style="font-size: 12px;">answers_blind.csv</span>
-              </a>
-
-              <a href="/api/export/jsonl?mode=${activeMode}" class="btn" id="btn-export-jsonl" style="justify-content: space-between; min-height: 40px;">
-                <span>⬇ Export Session Log (JSONL)</span>
-                <span class="mono" style="font-size: 12px; color: var(--text-secondary);">answers_blind.jsonl</span>
-              </a>
-            </div>
           </div>
 
           <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 10px;">
@@ -690,7 +409,7 @@
     const methodBadgeMap = {
       bws_3: "Pick Best & Worst",
       bws: "Pick Best & Worst",
-      "2afc": "Block 2 · Side-by-Side Comparison",
+      "2afc": "Side-by-Side Comparison",
       pairwise: "Pairwise Comparison",
       mos_likert: "Quality Rating (1–5)",
       abx: "ABX Reference Match",
@@ -850,7 +569,7 @@
 
         <div class="brand-group">
           ${st.can_undo ? `<button type="button" class="btn btn-sm" id="btn-undo" title="Undo previous item rating">↶ Undo</button>` : ""}
-          <button type="button" class="btn btn-sm" id="btn-shortcuts" title="Keyboard shortcuts: 1-3 flip clip in 1:1 Flip mode, A-C pick Best, Shift+A-C pick Worst, Y/P/N action progress, Space play/pause, Left/Right step frame, Enter submit, F flag flawed" aria-label="Keyboard Shortcuts">
+          <button type="button" class="btn btn-sm" id="btn-shortcuts" title="Keyboard shortcuts: 1-3 / A-C pick Best (or flip clip in 1:1 Flip mode), Shift+1-3 / Shift+A-C pick Worst, Y/P/N action progress, Space play/pause, Left/Right step frame, Enter submit, F flag flawed" aria-label="Keyboard Shortcuts">
             ? Shortcuts
           </button>
           <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
@@ -927,7 +646,7 @@
               value="${escapeHtml(draftNotes)}"
               aria-label="Item notes"
             >
-            <button type="button" class="btn btn-sm btn-flawed ${st.flawed ? "active-flawed" : ""}" id="btn-flag-flawed" title="Flag this item if flawed or action cannot be shown">
+            <button type="button" class="btn btn-sm btn-flawed ${st.flawed ? "active-flawed" : ""}" id="btn-flag-flawed" title="Flag this item if flawed or action cannot be shown (Key F)">
               ⚑ ${st.flawed ? "Flagged Flawed" : "Flag flawed item"}
             </button>
           </div>
@@ -1512,11 +1231,11 @@
 
     try {
       const nextSt = await apiPost("/api/submit", payload);
-      // Show brief #808080 grey adaptation curtain between trials
+      // Show 700 ms #808080 grey adaptation curtain between trials (DESIGN-cosmos3-quant-human-test-2026-10-30.md:247)
       const curtain = document.getElementById("grey-gap-curtain");
       if (curtain && nextSt.global_index !== st.global_index && !nextSt.interstitial) {
         curtain.classList.remove("hidden");
-        await new Promise((r) => setTimeout(r, 120));
+        await new Promise((r) => setTimeout(r, INTER_TRIAL_CURTAIN_MS));
       }
       applyNewServerState(nextSt);
     } catch (err) {
@@ -1537,7 +1256,7 @@
     }
   });
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts (Card tm item 5: Y/P/N for Q2, Shift+1-3 for Worst in 3-up, F for flag flawed)
   window.addEventListener("keydown", (ev) => {
     if (!serverState || serverState.interstitial) {
       if (ev.key === "Enter" && serverState) {
@@ -1551,6 +1270,20 @@
     const st = serverState;
     const is3Clip = st.k >= 3 && st.method !== "abx";
     const effLayout = is3Clip ? computeEffective3ClipLayout() : "2up";
+
+    // Shift+1 / Shift+2 / Shift+3 pick Worst in 3-Up mode (Card tm item 5)
+    if (ev.shiftKey && (ev.key in SHIFT_DIGIT_MAP || ev.code in SHIFT_DIGIT_MAP)) {
+      const idx = ev.key in SHIFT_DIGIT_MAP ? SHIFT_DIGIT_MAP[ev.key] : SHIFT_DIGIT_MAP[ev.code];
+      const letKey = st.letters[idx];
+      if (!letKey || !firstPlayCompleted) return;
+      if (st.method === "bws_3" || st.method === "bws") {
+        ev.preventDefault();
+        draftWorst = letKey;
+        if (draftBest === letKey) draftBest = null;
+        refreshSelectionAndLayoutInPlace();
+      }
+      return;
+    }
 
     // Keys 1 / 2 / 3 flip active clip in 1:1 Flip mode (or pick Best/Choice in 2-up / 3-up)
     if (["1", "2", "3"].includes(ev.key) && !ev.shiftKey) {
@@ -1576,8 +1309,9 @@
       return;
     }
 
-    // Keys A / B / C pick Best (or Shift+A/B/C pick Worst)
     const upper = ev.key.toUpperCase();
+
+    // Keys A / B / C pick Best (or Shift+A/B/C pick Worst)
     if (st.letters.includes(upper) && firstPlayCompleted) {
       ev.preventDefault();
       if (st.method === "bws_3" || st.method === "bws") {
@@ -1592,6 +1326,32 @@
         draftChoice = upper;
       }
       refreshSelectionAndLayoutInPlace();
+      return;
+    }
+
+    // Keys Y / P / N answer Question 2 (Action Completion: Yes / Partly / No) for the active or next unanswered clip
+    const q2ShortcutMap = { "Y": "yes", "P": "partly", "N": "no" };
+    if (upper in q2ShortcutMap && st.ask_q2 && st.question2 && firstPlayCompleted) {
+      ev.preventDefault();
+      const q2Val = q2ShortcutMap[upper];
+      let targetLetter = null;
+      if (effLayout === "flip" && st.letters.includes(activeFlipLetter)) {
+        targetLetter = activeFlipLetter;
+      } else {
+        targetLetter = st.letters.find((l) => !draftQ2[l]) || st.letters[0];
+      }
+      if (targetLetter) {
+        draftQ2[targetLetter] = q2Val;
+        refreshSelectionAndLayoutInPlace();
+      }
+      return;
+    }
+
+    // Key F toggles Flag Flawed item
+    if (upper === "F" && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+      ev.preventDefault();
+      const flagBtn = document.getElementById("btn-flag-flawed");
+      if (flagBtn) flagBtn.click();
       return;
     }
 
@@ -1616,30 +1376,7 @@
     }
   });
 
-  // Expose helper for programmatic tests & screenshot harness
-  window.__blindpanel = {
-    unlockVotingForTest: () => {
-      firstPlayCompleted = true;
-      refreshSelectionAndLayoutInPlace();
-    },
-    setSelectionsForTest: (best, worst, q2Map, notesText) => {
-      firstPlayCompleted = true;
-      draftBest = best;
-      draftWorst = worst;
-      if (q2Map) draftQ2 = Object.assign({}, q2Map);
-      if (notesText != null) {
-        draftNotes = notesText;
-        const inp = document.getElementById("notes-input");
-        if (inp) inp.value = notesText;
-      }
-      refreshSelectionAndLayoutInPlace();
-    },
-    setLayoutMode: (mode, flipLetter) => {
-      manualLayoutOverride = mode;
-      if (flipLetter) activeFlipLetter = flipLetter;
-      preserveVideoTimeAcrossRerender(() => renderActiveRatingStage(serverState));
-    },
-  };
+  // __BLINDPANEL_TEST_HOOKS_SLOT__
 
   loadViewData().catch((err) => {
     root.innerHTML = `<div style="padding: 20px; color: red;">Failed to load session: ${escapeHtml(err.message)}</div>`;

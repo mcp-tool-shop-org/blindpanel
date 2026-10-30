@@ -1,7 +1,7 @@
 """leak_guard.py — Repository-wide leak guard for blindpanel (Rule 4).
 
 Scans every tracked file (via `git ls-files`) or an explicit directory tree and fails on:
-1. A per-item slot or arm order in config/data files or literal arm-order arrays.
+1. A per-item slot or arm order in config/data files, literal arm-order arrays, or an arm-map file mapping `ARM_1..ARM_4` to clip prefixes.
 2. An arm label within N=240 characters of a 64-hex SHA-256 digest or a `.mp4` clip path.
 3. A seed or salt key with a literal value in config/data files, or the voided study seed literal.
 4. An absolute local path (Windows drive letters or user-home paths).
@@ -25,7 +25,7 @@ from blindpanel.mock_clips import MOCK_CLIP_MARKER, read_png_mock_marker
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 
 # Construct sensitive study pattern strings dynamically so this module's source contains zero literal study tokens
-_SLOT_KEY_PAT = "|".join(["slot" + "_arms", "arm_order", "letter_to_arm", "arm_to_letter"])
+_SLOT_KEY_PAT = "|".join(["slot" + "_arms", "arm_order", "letter_to_arm", "arm_to_letter", "arm" + "_map"])
 SLOT_ORDER_KEY_RE = re.compile(
     rf'"(?:{_SLOT_KEY_PAT})"\s*:',
     flags=re.IGNORECASE,
@@ -42,6 +42,7 @@ _ARM_TOKENS_PAT = "|".join([
     "NA" + "NO",
 ])
 ARM_LABEL_TOKEN_RE = re.compile(rf"\b(?:{_ARM_TOKENS_PAT})\b")
+ARM_MAP_JSON_ENTRY_RE = re.compile(r'"ARM_[1-9]\d*"\s*:\s*"[A-Za-z0-9_.-]+"')
 SHA256_OR_MP4_RE = re.compile(
     r"(?:\b[0-9a-fA-F]{64}\b|[A-Za-z0-9_./-]+\.mp4\b)"
 )
@@ -95,9 +96,16 @@ def list_tracked_files(repo_root: Path) -> List[Path]:
 
 
 def scan_text_content_for_leaks(rel_path: str, content: str) -> List[str]:
-    """Scan a single text file's content for Rules 4(a)–4(d) violations."""
+    """Scan a single text file's content for Rules 4(a)–4(d) and arm-map violations."""
     violations: List[str] = []
     is_json_or_config = rel_path.endswith((".json", ".jsonl", ".yaml", ".yml", ".toml"))
+    lower_name = Path(rel_path).name.lower()
+
+    # 0. Arm-map files or JSON mappings from ARM_1..ARM_4 to clip filename prefixes
+    if ("arm_map" in lower_name or "arm-map" in lower_name) and is_json_or_config:
+        violations.append(f"{rel_path}: arm_map file must not be tracked in git")
+    if is_json_or_config and ARM_MAP_JSON_ENTRY_RE.search(content):
+        violations.append(f"{rel_path}: contains arm_map mapping from ARM_ pseudonym to clip prefix")
 
     # 1. Voided seed or study cell prefixes in any tracked file
     if VOID_SEED_RE.search(content):

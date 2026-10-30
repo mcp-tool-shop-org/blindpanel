@@ -1,11 +1,13 @@
 """cosmos3_study.py — Build and verify the Cosmos 3 Amendment A study design config and local sealed session files.
 
-Rules enforced (Card tg):
+Rules enforced (Card tg & Card tm):
 1. The committed public study config (`configs/cosmos3_amendment_a.json`) holds ONLY cell ids, prompts,
    rater cues, block and method settings, and timing rules. It has NO arms per item, NO per-item slot or arm
    orders, NO clip paths or SHA-256 digests, NO seed or salt, and NO absolute local paths.
 2. When preparing a local session on a directory of clips (mock or real), a local gitignored config or sealed
    manifest is written outside tracked files, verified by SHA-256 at load.
+3. Supports an optional `--arm-map <path>` mapping each pseudonym (`ARM_1..ARM_4`) to a local clip filename prefix,
+   read once at session start into the sealed store and never served.
 """
 from __future__ import annotations
 
@@ -327,22 +329,25 @@ def discover_clips_in_dir(
     clips_dir: str,
     arms: List[str],
     base_cell_id: str,
+    arm_map: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Dict[str, str]]:
     """Resolve and hash clip files on disk for a given cell and arm list.
 
-    Supports naming conventions `{arm}_{base_cell_id}.mp4` or `{arm}_*_{base_cell_id}.mp4`.
+    Supports naming conventions `{prefix}_{base_cell_id}.mp4` or `{prefix}_*_{base_cell_id}.mp4`,
+    where `prefix` is `arm_map.get(arm, arm)` if `arm_map` is provided, or `arm` otherwise.
     """
     if not os.path.isdir(clips_dir):
         raise FileNotFoundError(f"Clips directory not found: {clips_dir}")
     entries = os.listdir(clips_dir)
     resolved_arms: Dict[str, Dict[str, str]] = {}
     for arm in arms:
-        direct_name = f"{arm}_{base_cell_id}.mp4"
+        file_prefix = str(arm_map[arm]).strip() if (arm_map and arm in arm_map) else arm
+        direct_name = f"{file_prefix}_{base_cell_id}.mp4"
         matched_file: Optional[str] = None
         if direct_name in entries:
             matched_file = direct_name
         else:
-            prefix = f"{arm}_"
+            prefix = f"{file_prefix}_"
             suffix = f"_{base_cell_id}.mp4"
             for fname in entries:
                 if fname.startswith(prefix) and fname.endswith(suffix):
