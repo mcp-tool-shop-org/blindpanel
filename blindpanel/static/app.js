@@ -1,0 +1,1647 @@
+(function () {
+  "use strict";
+
+  const root = document.getElementById("app-root");
+  const params = new URLSearchParams(window.location.search);
+  let activeView = params.get("view") || "rater"; // "rater" | "pilot" | "preflight" | "audit"
+  let activeMode = activeView === "pilot" ? "pilot" : "live";
+
+  // Detail visibility threshold: 3 native 832px tiles + 2*12px gaps + 2*14px stage padding = 2548px
+  const NATIVE_3UP_MIN_WIDTH = 2548;
+
+  // Layout override from URL (`?layout=flip` or `?layout=3up` or `?layout=native`) or automatic
+  let manualLayoutOverride = params.get("layout") || null; // null = auto width detection
+  let activeFlipLetter = params.get("flip") || "A";
+  let activeZoom = params.get("zoom") || "fit"; // "fit" | "1:1" | "2x"
+  let playbackSpeed = 1.0;
+  let loopMode = "loop"; // "loop" | "bounce"
+
+  // Session & Draft State
+  let serverState = null;
+  let preflightData = null;
+  let auditData = null;
+  let currentGlobalIndex = null;
+
+  // Per-item draft answers preserved across layout switches and resizes
+  let draftBest = null;
+  let draftWorst = null;
+  let draftChoice = null;
+  let draftQ2 = {};
+  let draftLikert = {};
+  let draftNotes = "";
+  let firstPlayCompleted = false;
+  let maxWatchedTime = 0;
+  let videoElements = {};
+  let isPlaying = true;
+  let syncInterval = null;
+  let breakSecondsRemaining = 600;
+  let breakTimerId = null;
+
+  // Theme management
+  let currentTheme = localStorage.getItem("blindpanel_theme") || params.get("theme") || "light";
+  document.documentElement.setAttribute("data-theme", currentTheme);
+
+  function toggleTheme() {
+    currentTheme = currentTheme === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", currentTheme);
+    localStorage.setItem("blindpanel_theme", currentTheme);
+    updateThemeButtons();
+  }
+
+  function updateThemeButtons() {
+    const btns = document.querySelectorAll("[data-action='toggle-theme']");
+    btns.forEach((b) => {
+      b.textContent = currentTheme === "light" ? "Light / Dark" : "Dark / Light";
+    });
+  }
+
+  function computeEffective3ClipLayout() {
+    if (manualLayoutOverride === "flip") return "flip";
+    if (manualLayoutOverride === "3up") return "3up";
+    if (manualLayoutOverride === "native") return "native";
+    return window.innerWidth >= NATIVE_3UP_MIN_WIDTH ? "native" : "flip";
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  async function apiGet(url) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async function apiPost(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    return data;
+  }
+
+  async function loadViewData() {
+    if (activeView === "preflight") {
+      preflightData = await apiGet("/api/operator/preflight");
+      renderPreflightView();
+      return;
+    }
+    if (activeView === "audit") {
+      auditData = await apiGet("/api/operator/audit");
+      renderOperatorAuditView();
+      return;
+    }
+    activeMode = activeView === "pilot" ? "pilot" : "live";
+    const reqIdx = params.get("item") != null ? `&global_index=${encodeURIComponent(params.get("item"))}` : "";
+    const st = await apiGet(`/api/state?mode=${activeMode}${reqIdx}`);
+    applyNewServerState(st);
+  }
+
+  function applyNewServerState(st) {
+    const itemChanged = currentGlobalIndex !== st.global_index || (serverState && serverState.interstitial !== st.interstitial);
+    serverState = st;
+
+    if (itemChanged) {
+      currentGlobalIndex = st.global_index;
+      draftBest = null;
+      draftWorst = null;
+      draftChoice = st.choice_outcome || null;
+      draftQ2 = Object.assign({}, st.q2_by_letter || {});
+      draftLikert = Object.assign({}, st.likert_by_letter || {});
+      draftNotes = st.notes || "";
+      activeFlipLetter = (st.letters && st.letters[0]) || "A";
+
+      // Restore Best/Worst draft if item already has ranks
+      if (st.ranks_by_letter) {
+        for (const [letKey, rnk] of Object.entries(st.ranks_by_letter)) {
+          if (rnk === 1) draftBest = letKey;
+          if (rnk === st.k) draftWorst = letKey;
+        }
+      }
+
+      // Unlock voting immediately if require_full_play is false or if ?unlock=1 is passed for static inspection
+      firstPlayCompleted = !st.require_full_play || params.get("unlock") === "1" || st.completed;
+      maxWatchedTime = 0;
+    }
+
+    renderRaterOrPilotScreen();
+  }
+
+  // ------------------------------------------------------------------
+  // Operator Pre-Flight View (`/?view=preflight`)
+  // ------------------------------------------------------------------
+  function renderPreflightView() {
+    const pf = preflightData;
+    if (!pf) return;
+
+    const b1 = pf.blocks_summary[0] || {};
+    const b2 = pf.blocks_summary[1] || null;
+    const headerSummary = b2
+      ? `${pf.title} — ${b1.arms.length} Arms (Block 1: ${b1.arms.join(", ")} · ${b1.num_items} Items) + optional Block 2 (${b2.arms.join(" vs ")} · ${b2.num_items} Items)`
+      : `${pf.title} — ${b1.arms.length} Arms (${b1.arms.join(", ")} · ${b1.num_items} Items)`;
+
+    const gateHtml = pf.live_start_blocked
+      ? `
+      <section class="preflight-gate-bar" aria-label="Session Start Gate">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge badge-flag" style="font-size: 12px; font-weight: 800;">⚠ ${pf.flagged_count} ITEM FLAGGED</span>
+          <div>
+            <div style="font-weight: 800; font-size: 12.5px;">
+              Live rating cannot start while any item is flagged (${escapeHtml(pf.flagged_prompt_ids.join(", "))} exceeds ${pf.clip_spec.seconds} s clip length).
+            </div>
+            <div style="font-size: 12px;">
+              Record a logged operator override below or resolve the flagged item before starting a live session.
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+          <button type="button" class="btn" id="btn-open-pilot">▶ Open Pilot Mode</button>
+          <button type="button" class="btn btn-disabled" id="btn-start-live-preflight" disabled aria-disabled="true">
+            🔒 Start Live Session (Disabled)
+          </button>
+        </div>
+      </section>`
+      : `
+      <section class="override-strip" aria-label="Session Start Ready">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="badge badge-pass mono">✓ PRE-FLIGHT READY</span>
+          <span style="font-weight: 700; font-size: 12.5px;">
+            ${pf.override_recorded ? `Logged override active: "${escapeHtml(pf.latest_override.reason)}"` : "All live items fit within clip duration."}
+          </span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn" id="btn-open-pilot">▶ Open Pilot Mode</button>
+          <button type="button" class="btn btn-primary" id="btn-start-live-preflight">▶ Start Live Session</button>
+        </div>
+      </section>`;
+
+    const rowsHtml = pf.rows
+      .map((r) => {
+        const isFlagged = r.flagged;
+        const badgeHtml = isFlagged
+          ? `<span class="badge badge-flag mono">✕ FLAGGED (&gt;${r.clip_seconds}s)</span>`
+          : `<span class="badge badge-pass mono">✓ PASS</span>`;
+        const qDesc = r.ask_q2
+          ? `Q1 (${b1.method}) + Q2 ("How far does the robot get with the action within the 2.5 s clip?")`
+          : `Q1 (${b1.method})`;
+        return `
+        <tr class="${isFlagged ? "row-flagged" : ""}">
+          <td class="mono"><strong>${escapeHtml(r.prompt_id)}</strong></td>
+          <td>${escapeHtml(r.prompt_type)}</td>
+          <td>${escapeHtml(r.required_action)}</td>
+          <td>${escapeHtml(r.prompt)}</td>
+          <td class="mono">${escapeHtml(r.estimated_seconds)} vs ${r.clip_seconds}s</td>
+          <td>${escapeHtml( qDesc )}</td>
+          <td>${badgeHtml}</td>
+        </tr>`;
+      })
+      .join("");
+
+    root.innerHTML = `
+      <header class="top-bar" role="banner">
+        <div class="brand-group">
+          <span class="brand-title">blindpanel</span>
+          <span class="badge mono">v0.1.0</span>
+          <span class="badge">Operator Pre-Flight</span>
+        </div>
+        <div style="font-weight: 700; font-size: 12.5px;">${escapeHtml(headerSummary)}</div>
+        <div class="brand-group">
+          <button type="button" class="btn btn-sm" id="btn-goto-audit">Operator Audit</button>
+          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
+        </div>
+      </header>
+
+      <div class="integrity-bar" role="region" aria-label="Cryptographic and Media Integrity Verification">
+        <div class="integrity-items">
+          <span class="integrity-item">
+            <span class="badge badge-pass mono">✓ CLIPS VERIFIED</span>
+            <span class="mono">${pf.verified_clip_count} files SHA-256 OK (${pf.clip_spec.width}×${pf.clip_spec.height} @ ${pf.clip_spec.fps} fps, ${pf.clip_spec.frames} frames = <strong>${pf.clip_spec.seconds} s</strong>)</span>
+          </span>
+          <span class="integrity-item">
+            <span class="badge badge-lock mono">🔒 MAP SEALED</span>
+            <span class="mono">sealed_map.bin</span>
+          </span>
+          <span class="integrity-item">
+            <span class="badge mono">⚙ CONFIG HASH</span>
+            <span class="mono">sha256:${pf.config_sha256.slice(0, 16)}…</span>
+          </span>
+        </div>
+      </div>
+
+      <main class="preflight-main" role="main">
+        ${gateHtml}
+
+        <section class="override-strip" aria-label="Logged Override Controls">
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+            <span class="badge badge-warn mono">LOGGED OVERRIDE</span>
+            <label for="override-reason" style="font-weight: 600; font-size: 12px; white-space: nowrap;">
+              Operator override reason (logged):
+            </label>
+            <input
+              id="override-reason"
+              type="text"
+              class="notes-input mono"
+              style="height: 32px; font-size: 12px;"
+              placeholder="Enter reason to override pre-flight flag…"
+              value="${pf.latest_override ? escapeHtml(pf.latest_override.reason) : ""}"
+              aria-label="Override reason for audit log"
+            >
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="btn btn-warn btn-sm" id="btn-record-override">
+              Record Logged Override &amp; Unlock Start
+            </button>
+          </div>
+        </section>
+
+        <div class="table-wrap" role="region" aria-label="Pre-flight Prompt and Clip Duration Table" tabindex="0">
+          <table class="preflight-table">
+            <thead>
+              <tr>
+                <th style="width: 48px;">ID</th>
+                <th style="width: 90px;">Type</th>
+                <th style="width: 180px;">Required Action</th>
+                <th>Prompt</th>
+                <th style="width: 130px;">Est. vs Clip</th>
+                <th style="width: 240px;">Rater Questions</th>
+                <th style="width: 120px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </main>
+    `;
+
+    updateThemeButtons();
+    const btnPilot = document.getElementById("btn-open-pilot");
+    if (btnPilot) {
+      btnPilot.addEventListener("click", () => {
+        activeView = "pilot";
+        loadViewData();
+      });
+    }
+    const btnLive = document.getElementById("btn-start-live-preflight");
+    if (btnLive && !pf.live_start_blocked) {
+      btnLive.addEventListener("click", () => {
+        activeView = "rater";
+        loadViewData();
+      });
+    }
+    const btnAudit = document.getElementById("btn-goto-audit");
+    if (btnAudit) {
+      btnAudit.addEventListener("click", () => {
+        activeView = "audit";
+        loadViewData();
+      });
+    }
+    const btnOverride = document.getElementById("btn-record-override");
+    if (btnOverride) {
+      btnOverride.addEventListener("click", async () => {
+        const inp = document.getElementById("override-reason");
+        try {
+          preflightData = await apiPost("/api/operator/override", { reason: inp ? inp.value : "" });
+          renderPreflightView();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    }
+    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
+  }
+
+  // ------------------------------------------------------------------
+  // Operator Audit View (`/?view=audit`)
+  // ------------------------------------------------------------------
+  function renderOperatorAuditView() {
+    const ad = auditData;
+    if (!ad) return;
+    root.innerHTML = `
+      <header class="top-bar" role="banner">
+        <div class="brand-group">
+          <span class="brand-title">blindpanel</span>
+          <span class="badge">Operator Post-Session Audit</span>
+        </div>
+        <div class="brand-group">
+          <button type="button" class="btn btn-sm" id="btn-back-preflight">← Pre-Flight</button>
+          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
+        </div>
+      </header>
+
+      <div class="integrity-bar" role="region" aria-label="Cryptographic Integrity Line">
+        <div class="integrity-items">
+          <span class="integrity-item">
+            <span class="badge badge-pass mono">✓ CLIPS VERIFIED</span>
+            <span class="mono">${ad.verified_clip_count} files SHA-256 OK</span>
+          </span>
+          <span class="integrity-item">
+            <span class="badge badge-lock mono">🔒 MAP SEALED</span>
+            <span class="mono">${escapeHtml(ad.sealed_map_filename)}</span>
+          </span>
+          <span class="integrity-item">
+            <span class="badge mono">⚙ CONFIG HASH</span>
+            <span class="mono">sha256:${ad.config_sha256.slice(0, 16)}…</span>
+          </span>
+        </div>
+      </div>
+
+      <main class="content-single-card" role="main">
+        <section class="panel-card" aria-labelledby="operator-audit-heading">
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span class="badge badge-lock mono">OPERATOR / POST-SESSION AUDIT</span>
+              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">Study: ${escapeHtml(ad.study_id)}</span>
+            </div>
+
+            <h2 id="operator-audit-heading">Operator Audit &amp; Offline Unblinding</h2>
+
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-value">${ad.live_session.recorded_completed}</div>
+                <div class="stat-label">Live recorded items</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value">${ad. pilot_session.completed_items}</div>
+                <div class="stat-label">Pilot items (${escapeHtml(ad.pilot_session.pilot_answers_file)})</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value">${ad.live_session.flawed_or_noted_items.length}</div>
+                <div class="stat-label">Flagged / noted items</div>
+              </div>
+            </div>
+
+            <div style="background: var(--status-lock-bg); border: 1.5px solid var(--status-lock-border); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span style="font-weight: 800; font-size: 12px; color: var(--status-lock-text);">
+                  🔒 Offline Unblinding (Browser Never Loads Arm Identity Map)
+                </span>
+                <a href="/api/export/jsonl?mode=live" class="btn btn-sm">⬇ Export Session Log (JSONL)</a>
+              </div>
+              <div class="mono" style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: 4px; padding: 6px 8px; font-size: 12px; line-height: 1.35;">
+                python -m blindpanel.unblind --sealed-map ${escapeHtml(ad.sealed_map_filename)} --answers ${escapeHtml(ad.live_session.answers_file)} --out unblinded_results.json
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    `;
+    updateThemeButtons();
+    const btnBack = document.getElementById("btn-back-preflight");
+    if (btnBack) {
+      btnBack.addEventListener("click", () => {
+        activeView = "preflight";
+        loadViewData();
+      });
+    }
+    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
+  }
+
+  // ------------------------------------------------------------------
+  // Rater & Pilot Screens (Interstitials + Active Rating Stage)
+  // ------------------------------------------------------------------
+  function renderRaterOrPilotScreen() {
+    const st = serverState;
+    if (!st) return;
+
+    if (st.interstitial === "session_start") {
+      renderSessionStartInterstitial(st);
+      return;
+    }
+    if (st.interstitial === "rest_break" || st.interstitial === "block_break") {
+      renderRestBreakInterstitial(st);
+      return;
+    }
+    if (st.interstitial === "session_complete") {
+      renderSessionCompleteInterstitial(st);
+      return;
+    }
+    renderActiveRatingStage(st);
+  }
+
+  function renderPilotBannerIfNeeded(st) {
+    if (st.mode !== "pilot") return "";
+    return `
+      <div class="pilot-banner" role="region" aria-label="Pilot Mode Isolated Recording Notice">
+        <div class="pilot-banner-left">
+          <span class="pilot-pill">⚠ PILOT MODE</span>
+          <span>VERIFICATION PASS — RECORDED APART FROM LIVE ANSWERS</span>
+        </div>
+        <div class="pilot-banner-right mono">
+          <span>Pilot Log Isolated</span>
+          <span>|</span>
+          <span>Live answers.jsonl Untouched</span>
+        </div>
+      </div>`;
+  }
+
+  function renderSessionStartInterstitial(st) {
+    const totalInBlock = st.block_total_items;
+    const pct = Math.max(2, Math.round((1 / totalInBlock) * 100));
+    root.innerHTML = `
+      ${renderPilotBannerIfNeeded(st)}
+      <header class="top-bar" role="banner">
+        <div class="progress-cluster" aria-label="Session Progress">
+          <span class="brand-title">blindpanel</span>
+          <span class="badge mono">${escapeHtml(st.counter_label)}</span>
+          <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(st.progress_aria_label)}">
+            <div class="progress-fill" style="width: ${pct}%;"></div>
+          </div>
+        </div>
+        <div class="brand-group">
+          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
+        </div>
+      </header>
+
+      <main class="content-single-card" role="main">
+        <section class="panel-card" aria-labelledby="start-heading">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span class="badge badge-pass">Session Start</span>
+              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(st.counter_label)}</span>
+            </div>
+
+            <h2 id="start-heading">Practice items first</h2>
+
+            <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.48;">
+              The opening practice items let you adjust to the video clips and playback controls, followed by the rest of the <strong>${totalInBlock} items</strong> in this session.
+            </p>
+
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-value">${totalInBlock} Items</div>
+                <div class="stat-label">Block ${st.block_number} session items</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value">${st.k} Clips (${st.letters[0]}–${st.letters[st.letters.length - 1]})</div>
+                <div class="stat-label">Synchronized playback</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value">1 Full Play</div>
+                <div class="stat-label">Required before picking</div>
+              </div>
+            </div>
+
+            <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-secondary);">
+              <div style="color: var(--text-primary); font-weight: 700;">What to expect during rating:</div>
+              <div>• Watch the synchronized clips through at least one full loop before voting unlocks.</div>
+              <div>• Pick the <strong>Best</strong> and <strong>Worst</strong> clip; on 3-clip items, the remaining clip is ranked second automatically.</div>
+              <div>• On robot manipulation items, also answer how far the robot gets with the action within the 2.5 s clip (<strong>Yes / Partly / No</strong>).</div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+            <div class="progress-cluster">
+              <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(st.progress_aria_label)}">
+                <div class="progress-fill" style="width: ${pct}%;"></div>
+              </div>
+              <span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(st.counter_label)} ready</span>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-begin-session" ${st.live_start_blocked ? "disabled" : ""}>
+              ${st.live_start_blocked ? "🔒 Blocked by Pre-Flight" : "Begin Session ↵"}
+            </button>
+          </div>
+        </section>
+      </main>
+    `;
+    updateThemeButtons();
+    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
+    const btnBegin = document.getElementById("btn-begin-session");
+    if (btnBegin && !st.live_start_blocked) {
+      btnBegin.addEventListener("click", async () => {
+        const nextSt = await apiPost("/api/session/start", { mode: activeMode });
+        applyNewServerState(nextSt);
+      });
+    }
+  }
+
+  function renderRestBreakInterstitial(st) {
+    const isBlockTransition = st.interstitial === "block_break";
+    const savedCount = isBlockTransition ? 43 : st.item_number - 1;
+    const savedTotal = isBlockTransition ? 43 : st.block_total_items;
+
+    if (breakTimerId) clearInterval(breakTimerId);
+    breakSecondsRemaining = 522; // 08:42
+
+    root.innerHTML = `
+      ${renderPilotBannerIfNeeded(st)}
+      <header class="top-bar" role="banner">
+        <div class="progress-cluster" aria-label="Session Progress">
+          <span class="brand-title">blindpanel</span>
+          <span class="badge mono">Item ${savedCount} / ${savedTotal}</span>
+        </div>
+        <div class="brand-group">
+          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
+        </div>
+      </header>
+
+      <main class="content-single-card" role="main">
+        <section class="panel-card" aria-labelledby="break-heading">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span class="badge badge-warn">Rest Break</span>
+              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">Item ${savedCount} / ${savedTotal} Saved</span>
+            </div>
+
+            <h2 id="break-heading">
+              ${isBlockTransition ? "Block 1 Complete — Take a Break (Block 2 Optional)" : "Mid-Block Rest Break — Take a Short Break"}
+            </h2>
+
+            <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.48;">
+              ${
+                isBlockTransition
+                  ? `All <strong>43 items</strong> of Main Block 1 are complete and saved on disk. Take a short break to rest your eyes. <strong>Block 2 (${st.block_total_items} side-by-side pairs) is optional</strong> — you may save and close now, or continue to Block 2 after resting.`
+                  : `Items 1–${savedCount} are saved on disk. Take a short break to rest your eyes before continuing with Item ${st.item_number} / ${st.block_total_items}.`
+              }
+            </p>
+
+            <div style="background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 6px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">
+                  Recommended Rest Remaining
+                </div>
+                <div class="mono" id="break-timer-display" style="font-size: 28px; font-weight: 800; letter-spacing: 0.03em; margin: 2px 0;">
+                  08 : 42
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                  Look at a distant object ≥ 6 m away to rest your eyes.
+                </div>
+              </div>
+              <span class="badge badge-pass">Progress Saved</span>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 10px; gap: 8px;">
+            ${
+              isBlockTransition
+                ? `<button type="button" class="btn" id="btn-save-close">Save &amp; Close</button>
+                   <button type="button" class="btn btn-primary" id="btn-resume-block2">Resume Block 2 ↵</button>`
+                : `<span></span>
+                   <button type="button" class="btn btn-primary" id="btn-resume-break">Continue Session ↵</button>`
+            }
+          </div>
+        </section>
+      </main>
+    `;
+    updateThemeButtons();
+    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
+
+    const btnResumeBreak = document.getElementById("btn-resume-break");
+    if (btnResumeBreak) {
+      btnResumeBreak.addEventListener("click", async () => {
+        const nextSt = await apiPost("/api/session/resume_break", { mode: activeMode });
+        applyNewServerState(nextSt);
+      });
+    }
+    const btnResumeBlock2 = document.getElementById("btn-resume-block2");
+    if (btnResumeBlock2) {
+      btnResumeBlock2.addEventListener("click", async () => {
+        const nextSt = await apiPost("/api/session/start_block2", { mode: activeMode });
+        applyNewServerState(nextSt);
+      });
+    }
+    const btnSaveClose = document.getElementById("btn-save-close");
+    if (btnSaveClose) {
+      btnSaveClose.addEventListener("click", async () => {
+        const nextSt = await apiPost("/api/session/decline_block2", { mode: activeMode });
+        applyNewServerState(nextSt);
+      });
+    }
+  }
+
+  function renderSessionCompleteInterstitial(st) {
+    // BUILD-MUST-DO item 1: Rater's session-complete card has "Session Complete" and ZERO operator navigation (no Return to Pre-Flight)
+    const totalDone = st.block_total_items;
+    root.innerHTML = `
+      ${renderPilotBannerIfNeeded(st)}
+      <header class="top-bar" role="banner">
+        <div class="brand-group">
+          <span class="brand-title">blindpanel</span>
+          <span class="badge mono">Item ${totalDone} / ${totalDone}</span>
+          <span class="badge">Session Complete</span>
+        </div>
+        <div class="brand-group">
+          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
+        </div>
+      </header>
+
+      <main class="content-single-card" role="main">
+        <section class="panel-card" aria-labelledby="rater-complete-heading">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span class="badge badge-pass">Session Complete</span>
+              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">Item ${totalDone} / ${totalDone}</span>
+            </div>
+
+            <h2 id="rater-complete-heading">Session Complete — ${totalDone} / ${totalDone} items rated</h2>
+
+            <div class="progress-cluster">
+              <div class="progress-track" style="width: 160px;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Item ${totalDone} of ${totalDone} complete">
+                <div class="progress-fill" style="width: 100%;"></div>
+              </div>
+              <span style="font-size: 12.5px; font-weight: 700;">100% Complete (Item ${totalDone} / ${totalDone})</span>
+            </div>
+
+            <p style="color: var(--text-secondary); font-size: 13.5px; line-height: 1.5;">
+              Thank you. All responses for this session are saved and locked on disk. You can export the blind session files below or close this window safely.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+              <a href="/api/export/csv?mode=${activeMode}" class="btn btn-primary" id="btn-export-csv" style="justify-content: space-between; min-height: 40px;">
+                <span>⬇ Export Blind Answers (CSV)</span>
+                <span class="mono" style="font-size: 12px;">answers_blind.csv</span>
+              </a>
+
+              <a href="/api/export/jsonl?mode=${activeMode}" class="btn" id="btn-export-jsonl" style="justify-content: space-between; min-height: 40px;">
+                <span>⬇ Export Session Log (JSONL)</span>
+                <span class="mono" style="font-size: 12px; color: var(--text-secondary);">answers_blind.jsonl</span>
+              </a>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+            <span style="font-size: 12px; color: var(--text-secondary);">
+              All ${totalDone} items saved and verified
+            </span>
+          </div>
+        </section>
+      </main>
+    `;
+    updateThemeButtons();
+    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
+  }
+
+  // ------------------------------------------------------------------
+  // Active Rating Screen (Block 1 3-Clip BWS, Block 2 2AFC, BWS, Pairwise, MOS, ABX)
+  // ------------------------------------------------------------------
+  function renderActiveRatingStage(st) {
+    const pct = Math.max(2, Math.round((st.item_number / st.block_total_items) * 100));
+    const methodBadgeMap = {
+      bws_3: "Pick Best & Worst",
+      bws: "Pick Best & Worst",
+      "2afc": "Block 2 · Side-by-Side Comparison",
+      pairwise: "Pairwise Comparison",
+      mos_likert: "Quality Rating (1–5)",
+      abx: "ABX Reference Match",
+    };
+    const methodBadge = methodBadgeMap[st.method] || "Comparison";
+
+    const is3Clip = st.k >= 3 && st.method !== "abx";
+    const effLayout = is3Clip ? computeEffective3ClipLayout() : "2up";
+
+    let gridClass = "video-grid-3";
+    if (st.method === "2afc" || st.method === "pairwise" || st.k === 2) {
+      gridClass = "video-grid-2-centered";
+    } else if (is3Clip) {
+      if (effLayout === "native") gridClass = "video-grid-native-3";
+      else if (effLayout === "flip") gridClass = "video-grid-flip-single";
+      else gridClass = "video-grid-3";
+    }
+
+    // Determine middle letter for bws_3 when both Best and Worst are picked
+    let derivedMiddle = null;
+    if (st.method === "bws_3" && draftBest && draftWorst && draftBest !== draftWorst) {
+      const rem = st.letters.filter((l) => l !== draftBest && l !== draftWorst);
+      if (rem.length === 1) derivedMiddle = rem[0];
+    }
+
+    // Build video tiles
+    const clipsToRender =
+      st.method === "abx"
+        ? [
+            { letter: "A", url: st.reference_clips.A },
+            { letter: "B", url: st.reference_clips.B },
+            { letter: "X", url: st.reference_clips.X },
+          ]
+        : st.clips;
+
+    const tilesHtml = clipsToRender
+      .map((clip) => {
+        const letKey = clip.letter;
+        let pickClass = "";
+        let pickBadgeHtml = "";
+        let ariaDesc = `Clip ${letKey}`;
+
+        if (st.method === "bws_3" || st.method === "bws") {
+          if (draftBest === letKey) {
+            pickClass = "picked-best";
+            pickBadgeHtml = `<div class="tile-pick-badge tile-pick-best">★ BEST</div>`;
+            ariaDesc = `Clip ${letKey} — Selected as Best`;
+          } else if (draftWorst === letKey) {
+            pickClass = "picked-worst";
+            pickBadgeHtml = `<div class="tile-pick-badge tile-pick-worst">✕ WORST</div>`;
+            ariaDesc = `Clip ${letKey} — Selected as Worst`;
+          } else if (derivedMiddle === letKey) {
+            pickClass = "picked-middle";
+            pickBadgeHtml = `<div class="tile-pick-badge tile-pick-middle">2nd (Auto)</div>`;
+            ariaDesc = `Clip ${letKey} — Ranked 2nd Automatically`;
+          }
+        } else if (st.method === "2afc" || st.method === "pairwise" || st.method === "abx") {
+          if (draftChoice === letKey) {
+            pickClass = "picked-best";
+            pickBadgeHtml = `<div class="tile-pick-badge tile-pick-best">★ SELECTED</div>`;
+            ariaDesc = `Clip ${letKey} — Selected`;
+          }
+        }
+
+        const flipHiddenClass =
+          effLayout === "flip" && is3Clip && letKey !== activeFlipLetter ? "flip-inactive" : "";
+        const zoomClass =
+          activeZoom === "1:1" ? "zoom-1to1" : activeZoom === "2x" ? "zoom-2x" : "";
+
+        return `
+          <div class="video-tile ${pickClass} ${flipHiddenClass} ${zoomClass}" data-tile-letter="${letKey}" role="group" aria-label="${ariaDesc}">
+            <video
+              id="video-clip-${letKey}"
+              data-clip-letter="${letKey}"
+              src="${escapeHtml(clip.url)}"
+              muted
+              playsinline
+              preload="auto"
+            ></video>
+            <div class="tile-letter-badge">${letKey}</div>
+            ${pickBadgeHtml}
+          </div>`;
+      })
+      .join("");
+
+    // Layout & Flip Controls for 3-Clip detail visibility
+    const flipSwitcherHtml = is3Clip
+      ? `
+        <div class="segmented-control" role="group" aria-label="View Layout Mode">
+          <button type="button" class="seg-btn ${effLayout === "flip" ? "active" : ""}" data-layout-mode="flip" title="1:1 Single-Clip Flip Mode (keys 1 / 2 / 3)">1:1 Flip</button>
+          <button type="button" class="seg-btn ${effLayout === "3up" || effLayout === "native" ? "active" : ""}" data-layout-mode="3up" title="3-Up Side-by-Side Grid">3-Up</button>
+        </div>
+        ${
+          effLayout === "flip"
+            ? `<div class="segmented-control" role="group" aria-label="Active Flip Clip">
+                ${st.letters
+                  .map(
+                    (l, idx) =>
+                      `<button type="button" class="seg-btn ${activeFlipLetter === l ? "active" : ""}" data-flip-letter="${l}" title="Show Clip ${l} (Key ${idx + 1})">${l} (${idx + 1})</button>`
+                  )
+                  .join("")}
+               </div>`
+            : ""
+        }
+      `
+      : "";
+
+    // Question 2 Row (Manipulation M1-M4 items only)
+    let q2Html = "";
+    if (st.ask_q2 && st.question2) {
+      const q2Locked = !firstPlayCompleted;
+      const groupsHtml = st.letters
+        .map((letKey) => {
+          const curAns = draftQ2[letKey] || "";
+          const btnsHtml = st.question2.options
+            .map((opt) => {
+              const isSel = curAns === opt.id;
+              const selClass = isSel ? `selected-${opt.id}` : "";
+              const prefix = isSel ? "✓ " : "";
+              return `<button type="button" class="action-btn ${selClass}" data-q2-letter="${letKey}" data-q2-val="${escapeHtml(opt.id)}" ${q2Locked ? "disabled" : ""}>${prefix}${escapeHtml(opt.label)}</button>`;
+            })
+            .join("");
+          return `
+            <div class="action-clip-group" role="group" aria-label="Clip ${letKey} Action Progress">
+              <span class="action-clip-label">Clip ${letKey}:</span>
+              ${btnsHtml}
+            </div>`;
+        })
+        .join("");
+
+      q2Html = `
+        <div class="action-row" role="group" aria-label="Action Progress Question">
+          <div class="action-row-header">
+            <span class="action-question-title">${escapeHtml(st.question2.prompt)}</span>
+            <span class="action-question-hint">${
+              q2Locked ? "Unlocks after 1st full loop completes" : `Select one per clip (${st.letters.join(", ")})`
+            }</span>
+          </div>
+          <div class="action-grid-3">${groupsHtml}</div>
+        </div>`;
+    }
+
+    // Decision Row (Method-driven)
+    const voteHtml = buildVoteClusterHtml(st, derivedMiddle);
+
+    root.innerHTML = `
+      ${renderPilotBannerIfNeeded(st)}
+      <header class="top-bar" role="banner">
+        <div class="progress-cluster" aria-label="Session Progress">
+          <span class="brand-title">blindpanel</span>
+          <span class="badge mono" id="counter-badge">${escapeHtml(st.counter_label)}</span>
+          <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(st.progress_aria_label)}">
+            <div class="progress-fill" style="width: ${pct}%;"></div>
+          </div>
+          <span class="badge">${escapeHtml(methodBadge)}</span>
+        </div>
+
+        <div class="brand-group">
+          ${st.can_undo ? `<button type="button" class="btn btn-sm" id="btn-undo" title="Undo previous item rating">↶ Undo</button>` : ""}
+          <button type="button" class="btn btn-sm" id="btn-shortcuts" title="Keyboard shortcuts: 1-3 flip clip in 1:1 Flip mode, A-C pick Best, Shift+A-C pick Worst, Y/P/N action progress, Space play/pause, Left/Right step frame, Enter submit, F flag flawed" aria-label="Keyboard Shortcuts">
+            ? Shortcuts
+          </button>
+          <button type="button" class="btn btn-sm" data-action="toggle-theme">Light / Dark</button>
+        </div>
+      </header>
+
+      <div class="prompt-strip" role="region" aria-label="Current Prompt and Visual Cue">
+        <div class="prompt-main">
+          <span class="prompt-id mono">${escapeHtml(st.prompt_id)}</span>
+          <span class="prompt-text">${escapeHtml(st.prompt)}</span>
+        </div>
+        <div class="prompt-moment" id="cue-strip">
+          <strong>Look at:</strong> ${escapeHtml(st.rater_cue)}
+        </div>
+      </div>
+
+      <main class="video-stage" role="main" aria-label="Video Comparison Stage">
+        <div id="grey-gap-curtain" class="grey-gap-curtain hidden" aria-hidden="true"></div>
+        <div id="video-grid-container" class="${gridClass}" data-effective-layout="${effLayout}">
+          ${tilesHtml}
+        </div>
+      </main>
+
+      <section class="bottom-hud" aria-label="Playback and Voting Controls">
+        <div class="transport-row">
+          <div class="transport-group">
+            <button type="button" class="btn btn-sm" id="btn-play-pause">⏸ Pause</button>
+            <button type="button" class="btn btn-sm" id="btn-restart" title="Restart from Frame 0">↺ Restart</button>
+            <div class="segmented-control" role="group" aria-label="Frame Stepping">
+              <button type="button" class="seg-btn" id="btn-step-back" title="Step back 1 frame">−1f</button>
+              <span class="seg-btn mono" id="frame-readout" style="cursor: default; color: var(--text-primary);">Frame 1 / 61</span>
+              <button type="button" class="seg-btn" id="btn-step-fwd" title="Step forward 1 frame">+1f</button>
+            </div>
+          </div>
+
+          <div class="scrubber-box" aria-label="Synchronized Scrubber">
+            <div class="scrubber-bar" id="scrubber-bar" role="slider" aria-label="Playback Timeline" aria-valuenow="1" aria-valuemin="0" aria-valuemax="61" tabindex="0">
+              <div class="scrubber-fill" id="scrubber-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="transport-group">
+            ${flipSwitcherHtml}
+            <div class="segmented-control" role="group" aria-label="Loop Mode">
+              <button type="button" class="seg-btn ${loopMode === "loop" ? "active" : ""}" data-loop-mode="loop">Loop</button>
+              <button type="button" class="seg-btn ${loopMode === "bounce" ? "active" : ""}" data-loop-mode="bounce">Bounce</button>
+            </div>
+            <div class="segmented-control" role="group" aria-label="Playback Speed">
+              <button type="button" class="seg-btn ${playbackSpeed === 0.25 ? "active" : ""}" data-speed="0.25">0.25×</button>
+              <button type="button" class="seg-btn ${playbackSpeed === 0.5 ? "active" : ""}" data-speed="0.5">0.5×</button>
+              <button type="button" class="seg-btn ${playbackSpeed === 1.0 ? "active" : ""}" data-speed="1.0">1.0×</button>
+            </div>
+            <div class="segmented-control" role="group" aria-label="Viewport Zoom">
+              <button type="button" class="seg-btn ${activeZoom === "fit" ? "active" : ""}" data-zoom="fit">Fit</button>
+              <button type="button" class="seg-btn ${activeZoom === "1:1" ? "active" : ""}" data-zoom="1:1">1:1</button>
+              <button type="button" class="seg-btn ${activeZoom === "2x" ? "active" : ""}" data-zoom="2x">2×</button>
+            </div>
+          </div>
+        </div>
+
+        ${q2Html}
+
+        <div class="decision-row">
+          <div class="vote-cluster" id="vote-cluster">
+            ${voteHtml}
+          </div>
+
+          <div class="notes-cluster">
+            <input
+              type="text"
+              id="notes-input"
+              class="notes-input"
+              placeholder="Notes (optional)…"
+              value="${escapeHtml(draftNotes)}"
+              aria-label="Item notes"
+            >
+            <button type="button" class="btn btn-sm btn-flawed ${st.flawed ? "active-flawed" : ""}" id="btn-flag-flawed" title="Flag this item if flawed or action cannot be shown">
+              ⚑ ${st.flawed ? "Flagged Flawed" : "Flag flawed item"}
+            </button>
+          </div>
+        </div>
+      </section>
+    `;
+
+    updateThemeButtons();
+    bindActiveStageEvents(st);
+    setupSynchronizedVideos(st);
+  }
+
+  function buildVoteClusterHtml(st, derivedMiddle) {
+    const locked = !firstPlayCompleted;
+    const lockBadge = locked
+      ? `<span class="badge badge-warn mono" id="first-play-lock-badge" style="font-weight: 800; padding: 4px 8px;">🔒 LOCKED UNTIL 1 FULL PLAY</span>`
+      : "";
+
+    const q2Complete =
+      !st.ask_q2 ||
+      !st.question2 ||
+      st.letters.every((l) => Boolean(draftQ2[l]));
+
+    if (st.method === "bws_3" || st.method === "bws") {
+      const targetLetters = st.method === "bws" ? st.remaining_letters : st.letters;
+      const bestBtns = targetLetters
+        .map((l) => {
+          const isSel = draftBest === l;
+          return `<button type="button" class="pick-btn ${isSel ? "selected-best" : ""}" data-pick-role="best" data-pick-letter="${l}" ${locked ? "disabled" : ""}>${isSel ? `★ ${l}` : l}</button>`;
+        })
+        .join("");
+
+      const worstBtns = targetLetters
+        .map((l) => {
+          const isSel = draftWorst === l;
+          return `<button type="button" class="pick-btn ${isSel ? "selected-worst" : ""}" data-pick-role="worst" data-pick-letter="${l}" ${locked ? "disabled" : ""}>${isSel ? `✕ ${l}` : l}</button>`;
+        })
+        .join("");
+
+      const orderBadge =
+        st.method === "bws_3" && draftBest && draftWorst && derivedMiddle
+          ? `<span class="badge mono" id="order-summary-badge" aria-label="Complete Ranking Order">Order: ${draftBest} ≻ ${derivedMiddle} ≻ ${draftWorst}</span>`
+          : `<span class="badge mono" id="order-summary-badge" aria-label="Complete Ranking Order">Pick Best &amp; Worst</span>`;
+
+      const canSubmit = !locked && draftBest && draftWorst && draftBest !== draftWorst && q2Complete;
+
+      return `
+        ${lockBadge}
+        <div class="pick-group" role="group" aria-label="Pick Best of 3">
+          <span class="pick-label">Best:</span>
+          ${bestBtns}
+        </div>
+        <div class="pick-group" role="group" aria-label="Pick Worst of 3">
+          <span class="pick-label">Worst:</span>
+          ${worstBtns}
+        </div>
+        ${orderBadge}
+        <button type="button" class="btn btn-primary" id="btn-submit-item" ${canSubmit ? "" : "disabled"}>
+          Submit &amp; Next ↵
+        </button>`;
+    }
+
+    if (st.method === "2afc" || st.method === "pairwise") {
+      const leftL = st.letters[0] || "A";
+      const rightL = st.letters[1] || "B";
+      const unsureBtn =
+        st.method === "pairwise" && st.allow_unsure
+          ? `<button type="button" class="pick-btn ${draftChoice === "unsure" ? "selected-best" : ""}" data-choice="unsure" ${locked ? "disabled" : ""}>${draftChoice === "unsure" ? "★ Unsure" : "Unsure"}</button>`
+          : "";
+      const canSubmit = !locked && Boolean(draftChoice) && q2Complete;
+      return `
+        ${lockBadge}
+        <div class="pick-group" role="group" aria-label="Side-by-Side Selection">
+          <span class="pick-label">Better overall quality:</span>
+          <button type="button" class="pick-btn ${draftChoice === leftL ? "selected-best" : ""}" data-choice="${leftL}" ${locked ? "disabled" : ""}>${draftChoice === leftL ? "★ " : ""}Prefer Left (${leftL})</button>
+          <button type="button" class="pick-btn ${draftChoice === rightL ? "selected-best" : ""}" data-choice="${rightL}" ${locked ? "disabled" : ""}>${draftChoice === rightL ? "★ " : ""}Prefer Right (${rightL})</button>
+          ${unsureBtn}
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-submit-item" ${canSubmit ? "" : "disabled"}>
+          Submit Pair ↵
+        </button>`;
+    }
+
+    if (st.method === "abx") {
+      const canSubmit = !locked && (draftChoice === "A" || draftChoice === "B") && q2Complete;
+      return `
+        ${lockBadge}
+        <div class="pick-group" role="group" aria-label="ABX Selection">
+          <span class="pick-label">Clip X matches:</span>
+          <button type="button" class="pick-btn ${draftChoice === "A" ? "selected-best" : ""}" data-choice="A" ${locked ? "disabled" : ""}>${draftChoice === "A" ? "★ " : ""}Reference A</button>
+          <button type="button" class="pick-btn ${draftChoice === "B" ? "selected-best" : ""}" data-choice="B" ${locked ? "disabled" : ""}>${draftChoice === "B" ? "★ " : ""}Reference B</button>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-submit-item" ${canSubmit ? "" : "disabled"}>
+          Submit ABX ↵
+        </button>`;
+    }
+
+    if (st.method === "mos_likert") {
+      const scale = st.likert_scale || [
+        { score: 5, label: "5" },
+        { score: 4, label: "4" },
+        { score: 3, label: "3" },
+        { score: 2, label: "2" },
+        { score: 1, label: "1" },
+      ];
+      const groups = st.letters
+        .map((letKey) => {
+          const curScore = draftLikert[letKey];
+          const btns = scale
+            .map((pt) => {
+              const isSel = Number(curScore) === Number(pt.score);
+              return `<button type="button" class="pick-btn ${isSel ? "selected-best" : ""}" data-likert-letter="${letKey}" data-likert-score="${pt.score}" ${locked ? "disabled" : ""}>${pt.score}</button>`;
+            })
+            .join("");
+          return `<div class="pick-group" role="group" aria-label="MOS Score Clip ${letKey}">
+            <span class="pick-label">Clip ${letKey}:</span>
+            ${btns}
+          </div>`;
+        })
+        .join("");
+      const allScored = st.letters.every((l) => draftLikert[l] != null);
+      const canSubmit = !locked && allScored && q2Complete;
+      return `
+        ${lockBadge}
+        ${groups}
+        <button type="button" class="btn btn-primary" id="btn-submit-item" ${canSubmit ? "" : "disabled"}>
+          Submit Rating ↵
+        </button>`;
+    }
+
+    return "";
+  }
+
+  // Update selection UI in-place without recreating <video> elements (preserves exact playback frame!)
+  function refreshSelectionAndLayoutInPlace() {
+    const st = serverState;
+    if (!st) return;
+
+    const is3Clip = st.k >= 3 && st.method !== "abx";
+    const effLayout = is3Clip ? computeEffective3ClipLayout() : "2up";
+    const gridEl = document.getElementById("video-grid-container");
+    if (gridEl && is3Clip) {
+      gridEl.className =
+        effLayout === "native"
+          ? "video-grid-native-3"
+          : effLayout === "flip"
+          ? "video-grid-flip-single"
+          : "video-grid-3";
+      gridEl.setAttribute("data-effective-layout", effLayout);
+    }
+
+    let derivedMiddle = null;
+    if (st.method === "bws_3" && draftBest && draftWorst && draftBest !== draftWorst) {
+      const rem = st.letters.filter((l) => l !== draftBest && l !== draftWorst);
+      if (rem.length === 1) derivedMiddle = rem[0];
+    }
+
+    // Update each video tile's classes and badge without touching the <video> element
+    const tiles = document.querySelectorAll(".video-tile[data-tile-letter]");
+    tiles.forEach((tile) => {
+      const letKey = tile.getAttribute("data-tile-letter");
+      tile.classList.remove(
+        "picked-best",
+        "picked-worst",
+        "picked-middle",
+        "flip-inactive",
+        "zoom-1to1",
+        "zoom-2x"
+      );
+      if (effLayout === "flip" && is3Clip && letKey !== activeFlipLetter) {
+        tile.classList.add("flip-inactive");
+      }
+      if (activeZoom === "1:1") tile.classList.add("zoom-1to1");
+      if (activeZoom === "2x") tile.classList.add("zoom-2x");
+
+      const oldBadge = tile.querySelector(".tile-pick-badge");
+      if (oldBadge) oldBadge.remove();
+
+      if (st.method === "bws_3" || st.method === "bws") {
+        if (draftBest === letKey) {
+          tile.classList.add("picked-best");
+          tile.setAttribute("aria-label", `Clip ${letKey} — Selected as Best`);
+          tile.insertAdjacentHTML("beforeend", `<div class="tile-pick-badge tile-pick-best">★ BEST</div>`);
+        } else if (draftWorst === letKey) {
+          tile.classList.add("picked-worst");
+          tile.setAttribute("aria-label", `Clip ${letKey} — Selected as Worst`);
+          tile.insertAdjacentHTML("beforeend", `<div class="tile-pick-badge tile-pick-worst">✕ WORST</div>`);
+        } else if (derivedMiddle === letKey) {
+          tile.classList.add("picked-middle");
+          tile.setAttribute("aria-label", `Clip ${letKey} — Ranked 2nd Automatically`);
+          tile.insertAdjacentHTML("beforeend", `<div class="tile-pick-badge tile-pick-middle">2nd (Auto)</div>`);
+        } else {
+          tile.setAttribute("aria-label", `Clip ${letKey}`);
+        }
+      } else if (draftChoice === letKey) {
+        tile.classList.add("picked-best");
+        tile.setAttribute("aria-label", `Clip ${letKey} — Selected`);
+        tile.insertAdjacentHTML("beforeend", `<div class="tile-pick-badge tile-pick-best">★ SELECTED</div>`);
+      }
+    });
+
+    // Update Q2 buttons in place
+    if (st.ask_q2 && st.question2) {
+      const q2Locked = !firstPlayCompleted;
+      const hintEl = document.querySelector(".action-question-hint");
+      if (hintEl) {
+        hintEl.textContent = q2Locked
+          ? "Unlocks after 1st full loop completes"
+          : `Select one per clip (${st.letters.join(", ")})`;
+      }
+      document.querySelectorAll("[data-q2-letter]").forEach((btn) => {
+        const l = btn.getAttribute("data-q2-letter");
+        const val = btn.getAttribute("data-q2-val");
+        const opt = st.question2.options.find((o) => o.id === val);
+        const isSel = draftQ2[l] === val;
+        btn.disabled = q2Locked;
+        btn.className = `action-btn ${isSel ? `selected-${val}` : ""}`;
+        btn.textContent = `${isSel ? "✓ " : ""}${opt ? opt.label : val}`;
+      });
+    }
+
+    // Re-render vote cluster and rebind vote buttons
+    const voteCluster = document.getElementById("vote-cluster");
+    if (voteCluster) {
+      voteCluster.innerHTML = buildVoteClusterHtml(st, derivedMiddle);
+      bindVoteClusterEvents(st);
+    }
+
+    // Update layout & flip toolbar buttons
+    document.querySelectorAll("[data-layout-mode]").forEach((btn) => {
+      const m = btn.getAttribute("data-layout-mode");
+      btn.classList.toggle("active", (m === "flip" && effLayout === "flip") || (m === "3up" && effLayout !== "flip"));
+    });
+    document.querySelectorAll("[data-flip-letter]").forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-flip-letter") === activeFlipLetter);
+    });
+    document.querySelectorAll("[data-zoom]").forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-zoom") === activeZoom);
+    });
+  }
+
+  function bindVoteClusterEvents(st) {
+    document.querySelectorAll("[data-pick-role]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!firstPlayCompleted) return;
+        const role = btn.getAttribute("data-pick-role");
+        const letter = btn.getAttribute("data-pick-letter");
+        if (role === "best") {
+          draftBest = letter;
+          if (draftWorst === letter) draftWorst = null;
+        } else {
+          draftWorst = letter;
+          if (draftBest === letter) draftBest = null;
+        }
+        refreshSelectionAndLayoutInPlace();
+      });
+    });
+
+    document.querySelectorAll("[data-choice]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!firstPlayCompleted) return;
+        draftChoice = btn.getAttribute("data-choice");
+        refreshSelectionAndLayoutInPlace();
+      });
+    });
+
+    document.querySelectorAll("[data-likert-letter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!firstPlayCompleted) return;
+        const l = btn.getAttribute("data-likert-letter");
+        const sc = parseFloat(btn.getAttribute("data-likert-score"));
+        draftLikert[l] = sc;
+        refreshSelectionAndLayoutInPlace();
+      });
+    });
+
+    const btnSubmit = document.getElementById("btn-submit-item");
+    if (btnSubmit) {
+      btnSubmit.addEventListener("click", () => submitCurrentItem());
+    }
+  }
+
+  function bindActiveStageEvents(st) {
+    root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
+    bindVoteClusterEvents(st);
+
+    document.querySelectorAll("[data-q2-letter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!firstPlayCompleted) return;
+        const l = btn.getAttribute("data-q2-letter");
+        const val = btn.getAttribute("data-q2-val");
+        draftQ2[l] = val;
+        refreshSelectionAndLayoutInPlace();
+      });
+    });
+
+    document.querySelectorAll("[data-layout-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        manualLayoutOverride = btn.getAttribute("data-layout-mode");
+        // Re-render transport row if switching to/from flip so flip A/B/C buttons appear, while preserving currentTime
+        preserveVideoTimeAcrossRerender(() => renderActiveRatingStage(serverState));
+      });
+    });
+
+    document.querySelectorAll("[data-flip-letter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeFlipLetter = btn.getAttribute("data-flip-letter");
+        refreshSelectionAndLayoutInPlace();
+      });
+    });
+
+    document.querySelectorAll("[data-zoom]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeZoom = btn.getAttribute("data-zoom");
+        refreshSelectionAndLayoutInPlace();
+      });
+    });
+
+    document.querySelectorAll("[data-speed]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        playbackSpeed = parseFloat(btn.getAttribute("data-speed"));
+        Object.values(videoElements).forEach((v) => {
+          v.playbackRate = playbackSpeed;
+        });
+        document.querySelectorAll("[data-speed]").forEach((b) => {
+          b.classList.toggle("active", parseFloat(b.getAttribute("data-speed")) === playbackSpeed);
+        });
+      });
+    });
+
+    document.querySelectorAll("[data-loop-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        loopMode = btn.getAttribute("data-loop-mode");
+        document.querySelectorAll("[data-loop-mode]").forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-loop-mode") === loopMode);
+        });
+      });
+    });
+
+    const notesInp = document.getElementById("notes-input");
+    if (notesInp) {
+      notesInp.addEventListener("input", () => {
+        draftNotes = notesInp.value;
+      });
+    }
+
+    const btnFlag = document.getElementById("btn-flag-flawed");
+    if (btnFlag) {
+      btnFlag.addEventListener("click", async () => {
+        const nextSt = await apiPost("/api/flag_flawed", {
+          mode: activeMode,
+          global_index: st.global_index,
+          flawed: !st.flawed,
+          reason: draftNotes || "Flagged by rater",
+        });
+        serverState.flawed = nextSt.flawed;
+        btnFlag.classList.toggle("active-flawed", nextSt.flawed);
+        btnFlag.textContent = `⚑ ${nextSt.flawed ? "Flagged Flawed" : "Flag flawed item"}`;
+      });
+    }
+
+    const btnUndo = document.getElementById("btn-undo");
+    if (btnUndo) {
+      btnUndo.addEventListener("click", async () => {
+        const nextSt = await apiPost("/api/undo", { mode: activeMode });
+        applyNewServerState(nextSt);
+      });
+    }
+  }
+
+  function preserveVideoTimeAcrossRerender(fn) {
+    const lead = Object.values(videoElements)[0];
+    const savedTime = lead ? lead.currentTime : 0;
+    const savedPaused = lead ? lead.paused : false;
+    fn();
+    Object.values(videoElements).forEach((v) => {
+      const restore = () => {
+        try {
+          v.currentTime = savedTime;
+          if (savedPaused) v.pause();
+          else v.play().catch(() => {});
+        } catch (_) {}
+      };
+      if (v.readyState >= 1) restore();
+      else v.addEventListener("loadedmetadata", restore, { once: true });
+    });
+  }
+
+  function setupSynchronizedVideos(st) {
+    if (syncInterval) clearInterval(syncInterval);
+    videoElements = {};
+    const vids = Array.from(document.querySelectorAll("video[data-clip-letter]"));
+    if (vids.length === 0) return;
+
+    vids.forEach((v) => {
+      const letKey = v.getAttribute("data-clip-letter");
+      videoElements[letKey] = v;
+      v.playbackRate = playbackSpeed;
+    });
+
+    const lead = vids[0];
+    const playPauseBtn = document.getElementById("btn-play-pause");
+    const restartBtn = document.getElementById("btn-restart");
+    const stepBackBtn = document.getElementById("btn-step-back");
+    const stepFwdBtn = document.getElementById("btn-step-fwd");
+    const scrubberBar = document.getElementById("scrubber-bar");
+    const scrubberFill = document.getElementById("scrubber-fill");
+    const frameReadout = document.getElementById("frame-readout");
+
+    function syncFollowersToLead() {
+      const t = lead.currentTime || 0;
+      for (let i = 1; i < vids.length; i++) {
+        if (Math.abs((vids[i].currentTime || 0) - t) > 0.04) {
+          try {
+            vids[i].currentTime = t;
+          } catch (_) {}
+        }
+      }
+    }
+
+    function updateScrubberAndUnlock() {
+      const dur = lead.duration && isFinite(lead.duration) ? lead.duration : 2.54;
+      const cur = lead.currentTime || 0;
+      if (cur > maxWatchedTime) maxWatchedTime = cur;
+
+      const totalFrames = 61;
+      const frameNum = Math.min(totalFrames, Math.max(1, Math.round((cur / dur) * totalFrames) + 1));
+      if (frameReadout) frameReadout.textContent = `Frame ${frameNum} / ${totalFrames}`;
+      if (scrubberFill) scrubberFill.style.width = `${Math.min(100, (cur / dur) * 100).toFixed(1)}%`;
+      if (scrubberBar) scrubberBar.setAttribute("aria-valuenow", String(frameNum));
+
+      if (!firstPlayCompleted && (cur >= dur - 0.12 || maxWatchedTime >= dur - 0.12)) {
+        firstPlayCompleted = true;
+        refreshSelectionAndLayoutInPlace();
+      }
+
+      if (cur >= dur - 0.04 && !lead.paused) {
+        vids.forEach((v) => {
+          try {
+            v.currentTime = 0;
+            v.play().catch(() => {});
+          } catch (_) {}
+        });
+      }
+    }
+
+    lead.addEventListener("ended", () => {
+      if (!firstPlayCompleted) {
+        firstPlayCompleted = true;
+        refreshSelectionAndLayoutInPlace();
+      }
+      vids.forEach((v) => {
+        try {
+          v.currentTime = 0;
+          v.play().catch(() => {});
+        } catch (_) {}
+      });
+    });
+
+    lead.addEventListener("timeupdate", () => {
+      syncFollowersToLead();
+      updateScrubberAndUnlock();
+    });
+
+    syncInterval = setInterval(() => {
+      if (lead && !lead.paused) {
+        syncFollowersToLead();
+        updateScrubberAndUnlock();
+      }
+    }, 80);
+
+    // Start all clips in lockstep once ready
+    Promise.all(
+      vids.map(
+        (v) =>
+          new Promise((resolve) => {
+            if (v.readyState >= 2) resolve();
+            else {
+              v.addEventListener("canplay", () => resolve(), { once: true });
+              setTimeout(resolve, 600);
+            }
+          })
+      )
+    ).then(() => {
+      const seekParam = params.get("t");
+      if (seekParam != null) {
+        const targetT = parseFloat(seekParam);
+        vids.forEach((v) => {
+          try {
+            v.currentTime = targetT;
+          } catch (_) {}
+        });
+        isPlaying = false;
+        if (playPauseBtn) playPauseBtn.textContent = "▶ Play";
+        updateScrubberAndUnlock();
+      } else {
+        isPlaying = true;
+        vids.forEach((v) => v.play().catch(() => {}));
+      }
+    });
+
+    if (playPauseBtn) {
+      playPauseBtn.addEventListener("click", () => {
+        if (lead.paused) {
+          isPlaying = true;
+          vids.forEach((v) => v.play().catch(() => {}));
+          playPauseBtn.textContent = "⏸ Pause";
+        } else {
+          isPlaying = false;
+          vids.forEach((v) => v.pause());
+          syncFollowersToLead();
+          playPauseBtn.textContent = "▶ Play";
+        }
+      });
+    }
+
+    if (restartBtn) {
+      restartBtn.addEventListener("click", () => {
+        vids.forEach((v) => {
+          try {
+            v.currentTime = 0;
+          } catch (_) {}
+        });
+        updateScrubberAndUnlock();
+      });
+    }
+
+    function stepFrames(deltaFrames) {
+      vids.forEach((v) => v.pause());
+      if (playPauseBtn) playPauseBtn.textContent = "▶ Play";
+      const dur = lead.duration && isFinite(lead.duration) ? lead.duration : 2.54;
+      const nextT = Math.max(0, Math.min(dur, (lead.currentTime || 0) + deltaFrames * (1 / 24)));
+      vids.forEach((v) => {
+        try {
+          v.currentTime = nextT;
+        } catch (_) {}
+      });
+      if (nextT >= dur - 0.12 && !firstPlayCompleted) {
+        firstPlayCompleted = true;
+        refreshSelectionAndLayoutInPlace();
+      }
+      updateScrubberAndUnlock();
+    }
+
+    if (stepBackBtn) stepBackBtn.addEventListener("click", () => stepFrames(-1));
+    if (stepFwdBtn) stepFwdBtn.addEventListener("click", () => stepFrames(1));
+
+    if (scrubberBar) {
+      scrubberBar.addEventListener("click", (ev) => {
+        const rect = scrubberBar.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+        const dur = lead.duration && isFinite(lead.duration) ? lead.duration : 2.54;
+        const targetT = ratio * dur;
+        vids.forEach((v) => {
+          try {
+            v.currentTime = targetT;
+          } catch (_) {}
+        });
+        if (ratio >= 0.95 && !firstPlayCompleted) {
+          firstPlayCompleted = true;
+          refreshSelectionAndLayoutInPlace();
+        }
+        updateScrubberAndUnlock();
+      });
+    }
+  }
+
+  async function submitCurrentItem() {
+    const st = serverState;
+    if (!st || !firstPlayCompleted) return;
+    const payload = {
+      mode: activeMode,
+      global_index: st.global_index,
+      best_letter: draftBest,
+      worst_letter: draftWorst,
+      choice: draftChoice,
+      q2_by_letter: draftQ2,
+      likert_by_letter: draftLikert,
+      notes: draftNotes,
+      flawed: st.flawed,
+    };
+
+    try {
+      const nextSt = await apiPost("/api/submit", payload);
+      // Show brief #808080 grey adaptation curtain between trials
+      const curtain = document.getElementById("grey-gap-curtain");
+      if (curtain && nextSt.global_index !== st.global_index && !nextSt.interstitial) {
+        curtain.classList.remove("hidden");
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      applyNewServerState(nextSt);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // Responsive layout switch on window resize without losing video time or draft selections
+  window.addEventListener("resize", () => {
+    if (!serverState || serverState.interstitial) return;
+    const is3Clip = serverState.k >= 3 && serverState.method !== "abx";
+    if (!is3Clip) return;
+    const gridEl = document.getElementById("video-grid-container");
+    const prevLayout = gridEl ? gridEl.getAttribute("data-effective-layout") : null;
+    const nextLayout = computeEffective3ClipLayout();
+    if (prevLayout !== nextLayout) {
+      preserveVideoTimeAcrossRerender(() => renderActiveRatingStage(serverState));
+    }
+  });
+
+  // Global keyboard shortcuts
+  window.addEventListener("keydown", (ev) => {
+    if (!serverState || serverState.interstitial) {
+      if (ev.key === "Enter" && serverState) {
+        const beginBtn = document.getElementById("btn-begin-session");
+        if (beginBtn && !beginBtn.disabled) beginBtn.click();
+      }
+      return;
+    }
+    if (ev.target && (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA")) return;
+
+    const st = serverState;
+    const is3Clip = st.k >= 3 && st.method !== "abx";
+    const effLayout = is3Clip ? computeEffective3ClipLayout() : "2up";
+
+    // Keys 1 / 2 / 3 flip active clip in 1:1 Flip mode (or pick Best/Choice in 2-up / 3-up)
+    if (["1", "2", "3"].includes(ev.key) && !ev.shiftKey) {
+      const idx = parseInt(ev.key, 10) - 1;
+      const letKey = st.letters[idx];
+      if (!letKey) return;
+      if (is3Clip && effLayout === "flip") {
+        ev.preventDefault();
+        activeFlipLetter = letKey;
+        refreshSelectionAndLayoutInPlace();
+        return;
+      }
+      if (firstPlayCompleted) {
+        ev.preventDefault();
+        if (st.method === "bws_3" || st.method === "bws") {
+          draftBest = letKey;
+          if (draftWorst === letKey) draftWorst = null;
+        } else if (st.method === "2afc" || st.method === "pairwise" || st.method === "abx") {
+          draftChoice = letKey;
+        }
+        refreshSelectionAndLayoutInPlace();
+      }
+      return;
+    }
+
+    // Keys A / B / C pick Best (or Shift+A/B/C pick Worst)
+    const upper = ev.key.toUpperCase();
+    if (st.letters.includes(upper) && firstPlayCompleted) {
+      ev.preventDefault();
+      if (st.method === "bws_3" || st.method === "bws") {
+        if (ev.shiftKey) {
+          draftWorst = upper;
+          if (draftBest === upper) draftBest = null;
+        } else {
+          draftBest = upper;
+          if (draftWorst === upper) draftWorst = null;
+        }
+      } else if (st.method === "2afc" || st.method === "pairwise" || st.method === "abx") {
+        draftChoice = upper;
+      }
+      refreshSelectionAndLayoutInPlace();
+      return;
+    }
+
+    if (ev.key === " ") {
+      ev.preventDefault();
+      const pp = document.getElementById("btn-play-pause");
+      if (pp) pp.click();
+    } else if (ev.key === "ArrowLeft") {
+      ev.preventDefault();
+      const sb = document.getElementById("btn-step-back");
+      if (sb) sb.click();
+    } else if (ev.key === "ArrowRight") {
+      ev.preventDefault();
+      const sf = document.getElementById("btn-step-fwd");
+      if (sf) sf.click();
+    } else if (ev.key === "Enter") {
+      const sub = document.getElementById("btn-submit-item");
+      if (sub && !sub.disabled) {
+        ev.preventDefault();
+        sub.click();
+      }
+    }
+  });
+
+  // Expose helper for programmatic tests & screenshot harness
+  window.__blindpanel = {
+    unlockVotingForTest: () => {
+      firstPlayCompleted = true;
+      refreshSelectionAndLayoutInPlace();
+    },
+    setSelectionsForTest: (best, worst, q2Map, notesText) => {
+      firstPlayCompleted = true;
+      draftBest = best;
+      draftWorst = worst;
+      if (q2Map) draftQ2 = Object.assign({}, q2Map);
+      if (notesText != null) {
+        draftNotes = notesText;
+        const inp = document.getElementById("notes-input");
+        if (inp) inp.value = notesText;
+      }
+      refreshSelectionAndLayoutInPlace();
+    },
+    setLayoutMode: (mode, flipLetter) => {
+      manualLayoutOverride = mode;
+      if (flipLetter) activeFlipLetter = flipLetter;
+      preserveVideoTimeAcrossRerender(() => renderActiveRatingStage(serverState));
+    },
+  };
+
+  loadViewData().catch((err) => {
+    root.innerHTML = `<div style="padding: 20px; color: red;">Failed to load session: ${escapeHtml(err.message)}</div>`;
+  });
+})();
