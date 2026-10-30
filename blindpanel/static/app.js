@@ -6,8 +6,9 @@
   let activeView = params.get("view") === "pilot" ? "pilot" : "rater";
   let activeMode = activeView === "pilot" ? "pilot" : "live";
 
-  // Detail visibility threshold: 3 native 832px tiles + 2*12px gaps + 2*14px stage padding = 2548px
-  const NATIVE_3UP_MIN_WIDTH = 2548;
+  // Detail visibility threshold: 3 native tiles (832px video + 1px border each side = 834px)
+  // + 2*12px gaps + 2*14px stage padding = 2554px. Same breakpoint as the wide-screen text scale in styles.css.
+  const NATIVE_3UP_MIN_WIDTH = 2554;
 
   // Inter-trial 50% grey adaptation curtain duration (700 ms per DESIGN-cosmos3-quant-human-test-2026-10-30.md:247)
   const INTER_TRIAL_CURTAIN_MS = 700;
@@ -25,7 +26,8 @@
   // Layout override from URL (`?layout=flip` or `?layout=3up` or `?layout=native`) or automatic
   let manualLayoutOverride = params.get("layout") || null; // null = auto width detection
   let activeFlipLetter = params.get("flip") || "A";
-  let activeZoom = params.get("zoom") || "fit"; // "fit" | "1:1" | "2x"
+  // "auto" follows the layout: native 3-up tiles are already 1:1, every other layout fits. "fit" | "1:1" | "2x" are manual.
+  let activeZoom = params.get("zoom") || "auto";
   let playbackSpeed = 1.0;
   let loopMode = "loop"; // "loop" | "bounce"
 
@@ -45,8 +47,15 @@
   let videoElements = {};
   let isPlaying = true;
   let syncInterval = null;
-  let breakSecondsRemaining = 600;
+  const BREAK_RECOMMENDED_SECONDS = 600; // 10:00 recommended rest on the break cards
+  let breakSecondsRemaining = BREAK_RECOMMENDED_SECONDS;
   let breakTimerId = null;
+
+  function formatBreakClock(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${String(m).padStart(2, "0")} : ${String(s).padStart(2, "0")}`;
+  }
 
   // Theme management
   let currentTheme = localStorage.getItem("blindpanel_theme") || params.get("theme") || "light";
@@ -66,11 +75,22 @@
     });
   }
 
+  function windowFitsNative3Up() {
+    return window.innerWidth >= NATIVE_3UP_MIN_WIDTH;
+  }
+
+  // Three tiles side by side are native-size (1:1) whenever the window fits them; the scaled 3-up grid is only
+  // for narrower windows that asked for 3-up, and the flip is the automatic fallback there.
   function computeEffective3ClipLayout() {
     if (manualLayoutOverride === "flip") return "flip";
-    if (manualLayoutOverride === "3up") return "3up";
+    if (manualLayoutOverride === "3up") return windowFitsNative3Up() ? "native" : "3up";
     if (manualLayoutOverride === "native") return "native";
-    return window.innerWidth >= NATIVE_3UP_MIN_WIDTH ? "native" : "flip";
+    return windowFitsNative3Up() ? "native" : "flip";
+  }
+
+  function computeEffectiveZoom(effLayout) {
+    if (activeZoom !== "auto") return activeZoom;
+    return effLayout === "native" ? "1:1" : "fit";
   }
 
   function escapeHtml(str) {
@@ -200,12 +220,12 @@
           <div style="display: flex; flex-direction: column; gap: 12px;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <span class="badge badge-pass">Session Start</span>
-              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(st.counter_label)}</span>
+              <span class="mono" style="font-size: calc(12px * var(--ui-scale)); color: var(--text-secondary);">${escapeHtml(st.counter_label)}</span>
             </div>
 
             <h2 id="start-heading">Practice items first</h2>
 
-            <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.48;">
+            <p style="color: var(--text-secondary); font-size: calc(13px * var(--ui-scale)); line-height: 1.48;">
               The opening practice items let you adjust to the video clips and playback controls, followed by the rest of the <strong>${totalInBlock} items</strong> in this session.
             </p>
 
@@ -224,7 +244,7 @@
               </div>
             </div>
 
-            <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-secondary);">
+            <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: calc(12.5px * var(--ui-scale)); color: var(--text-secondary);">
               <div style="color: var(--text-primary); font-weight: 700;">What to expect during rating:</div>
               <div>• Watch the synchronized clips through at least one full loop before voting unlocks.</div>
               <div>• Pick the <strong>Best</strong> and <strong>Worst</strong> clip; on 3-clip items, the remaining clip is ranked second automatically.</div>
@@ -237,7 +257,7 @@
               <div class="progress-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(st.progress_aria_label)}">
                 <div class="progress-fill" style="width: ${pct}%;"></div>
               </div>
-              <span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(st.counter_label)} ready</span>
+              <span style="font-size: calc(12px * var(--ui-scale)); color: var(--text-secondary);">${escapeHtml(st.counter_label)} ready</span>
             </div>
             <button type="button" class="btn btn-primary" id="btn-begin-session" ${st.live_start_blocked ? "disabled" : ""}>
               ${st.live_start_blocked ? "🔒 Session Locked" : "Begin Session ↵"}
@@ -259,11 +279,15 @@
 
   function renderRestBreakInterstitial(st) {
     const isBlockTransition = st.interstitial === "block_break";
-    const savedCount = isBlockTransition ? 43 : st.item_number - 1;
-    const savedTotal = isBlockTransition ? 43 : st.block_total_items;
+    // At a block transition the finished block's total comes from the server (the same total the counter
+    // showed for that block); mid-block, the items saved so far out of the current block's total.
+    const prevBlockNumber = st.block_number - 1;
+    const savedCount = isBlockTransition ? st.prev_block_total_items : st.item_number - 1;
+    const savedTotal = isBlockTransition ? st.prev_block_total_items : st.block_total_items;
 
+    // Recommended rest: a real 10-minute countdown (the previous card showed a fixed "08 : 42" that never moved).
     if (breakTimerId) clearInterval(breakTimerId);
-    breakSecondsRemaining = 522; // 08:42
+    breakSecondsRemaining = BREAK_RECOMMENDED_SECONDS;
 
     root.innerHTML = `
       ${renderPilotBannerIfNeeded(st)}
@@ -282,30 +306,30 @@
           <div style="display: flex; flex-direction: column; gap: 12px;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <span class="badge badge-warn">Rest Break</span>
-              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">Item ${savedCount} / ${savedTotal} Saved</span>
+              <span class="mono" style="font-size: calc(12px * var(--ui-scale)); color: var(--text-secondary);">Item ${savedCount} / ${savedTotal} Saved</span>
             </div>
 
             <h2 id="break-heading">
-              ${isBlockTransition ? "Block 1 Complete — Take a Break (Block 2 Optional)" : "Mid-Block Rest Break — Take a Short Break"}
+              ${isBlockTransition ? `Block ${prevBlockNumber} Complete — Take a Break (Block ${st.block_number} Optional)` : "Mid-Block Rest Break — Take a Short Break"}
             </h2>
 
-            <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.48;">
+            <p style="color: var(--text-secondary); font-size: calc(13px * var(--ui-scale)); line-height: 1.48;">
               ${
                 isBlockTransition
-                  ? `All <strong>43 items</strong> of Main Block 1 are complete and saved on disk. Take a short break to rest your eyes. <strong>Block 2 (${st.block_total_items} side-by-side pairs) is optional</strong> — you may save and close now, or continue to Block 2 after resting.`
+                  ? `All <strong>${savedTotal} items</strong> of Block ${prevBlockNumber} are complete and saved on disk. Take a short break to rest your eyes. <strong>Block ${st.block_number} (${st.block_total_items} side-by-side pairs) is optional</strong> — you may save and close now, or continue to Block ${st.block_number} after resting.`
                   : `Items 1–${savedCount} are saved on disk. Take a short break to rest your eyes before continuing with Item ${st.item_number} / ${st.block_total_items}.`
               }
             </p>
 
             <div style="background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 6px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
               <div>
-                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">
+                <div style="font-size: calc(12px * var(--ui-scale)); font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">
                   Recommended Rest Remaining
                 </div>
-                <div class="mono" id="break-timer-display" style="font-size: 28px; font-weight: 800; letter-spacing: 0.03em; margin: 2px 0;">
-                  08 : 42
+                <div class="mono" id="break-timer-display" style="font-size: calc(28px * var(--ui-scale)); font-weight: 800; letter-spacing: 0.03em; margin: 2px 0;">
+                  ${formatBreakClock(breakSecondsRemaining)}
                 </div>
-                <div style="font-size: 12px; color: var(--text-secondary);">
+                <div style="font-size: calc(12px * var(--ui-scale)); color: var(--text-secondary);">
                   Look at a distant object ≥ 6 m away to rest your eyes.
                 </div>
               </div>
@@ -317,7 +341,7 @@
             ${
               isBlockTransition
                 ? `<button type="button" class="btn" id="btn-save-close">Save &amp; Close</button>
-                   <button type="button" class="btn btn-primary" id="btn-resume-block2">Resume Block 2 ↵</button>`
+                   <button type="button" class="btn btn-primary" id="btn-resume-block2">Resume Block ${st.block_number} ↵</button>`
                 : `<span></span>
                    <button type="button" class="btn btn-primary" id="btn-resume-break">Continue Session ↵</button>`
             }
@@ -327,6 +351,21 @@
     `;
     updateThemeButtons();
     root.querySelectorAll("[data-action='toggle-theme']").forEach((b) => b.addEventListener("click", toggleTheme));
+
+    breakTimerId = setInterval(() => {
+      const disp = document.getElementById("break-timer-display");
+      if (!disp) {
+        clearInterval(breakTimerId);
+        breakTimerId = null;
+        return;
+      }
+      breakSecondsRemaining = Math.max(0, breakSecondsRemaining - 1);
+      disp.textContent = formatBreakClock(breakSecondsRemaining);
+      if (breakSecondsRemaining === 0) {
+        clearInterval(breakTimerId);
+        breakTimerId = null;
+      }
+    }, 1000);
 
     const btnResumeBreak = document.getElementById("btn-resume-break");
     if (btnResumeBreak) {
@@ -353,13 +392,28 @@
 
   function renderSessionCompleteInterstitial(st) {
     // Card tm (2): The rater export is removed entirely. The Session Complete view only thanks the rater and says the session is saved.
-    const totalDone = st.block_total_items;
+    // The counts are the server's list of fully rated blocks, each with the same total the session counter showed
+    // for it ("Item N / 43" during Block 1 ends as "43 / 43"); a declined optional block is simply not listed.
+    const doneBlocks = Array.isArray(st.completed_blocks) && st.completed_blocks.length > 0
+      ? st.completed_blocks
+      : [{ block_number: st.block_number, total_items: st.block_total_items }];
+    const lastBlock = doneBlocks[doneBlocks.length - 1];
+    const totalDone = lastBlock.total_items;
+    const perBlockSummary = doneBlocks.map((b) => `Block ${b.block_number}: ${b.total_items} / ${b.total_items}`).join(" · ");
+    const ratedHeading =
+      doneBlocks.length === 1
+        ? `${totalDone} / ${totalDone} items rated`
+        : `${perBlockSummary} items rated`;
+    const allSavedLine =
+      doneBlocks.length === 1
+        ? `All ${totalDone} items saved and verified`
+        : `All items saved and verified (${perBlockSummary})`;
     root.innerHTML = `
       ${renderPilotBannerIfNeeded(st)}
       <header class="top-bar" role="banner">
         <div class="brand-group">
           <span class="brand-title">blindpanel</span>
-          <span class="badge mono">Item ${totalDone} / ${totalDone}</span>
+          <span class="badge mono" id="counter-badge-complete">Item ${totalDone} / ${totalDone}</span>
           <span class="badge">Session Complete</span>
         </div>
         <div class="brand-group">
@@ -372,26 +426,26 @@
           <div style="display: flex; flex-direction: column; gap: 14px;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <span class="badge badge-pass">Session Complete</span>
-              <span class="mono" style="font-size: 12px; color: var(--text-secondary);">Item ${totalDone} / ${totalDone}</span>
+              <span class="mono" style="font-size: calc(12px * var(--ui-scale)); color: var(--text-secondary);">Item ${totalDone} / ${totalDone}</span>
             </div>
 
-            <h2 id="rater-complete-heading">Session Complete — ${totalDone} / ${totalDone} items rated</h2>
+            <h2 id="rater-complete-heading">Session Complete — ${ratedHeading}</h2>
 
             <div class="progress-cluster">
               <div class="progress-track" style="width: 160px;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Item ${totalDone} of ${totalDone} complete">
                 <div class="progress-fill" style="width: 100%;"></div>
               </div>
-              <span style="font-size: 12.5px; font-weight: 700;">100% Complete (Item ${totalDone} / ${totalDone})</span>
+              <span style="font-size: calc(12.5px * var(--ui-scale)); font-weight: 700;">100% Complete (Item ${totalDone} / ${totalDone})</span>
             </div>
 
-            <p id="session-saved-message" style="color: var(--text-secondary); font-size: 13.5px; line-height: 1.5;">
+            <p id="session-saved-message" style="color: var(--text-secondary); font-size: calc(13.5px * var(--ui-scale)); line-height: 1.5;">
               Thank you for completing the evaluation. Your session is saved on disk; you may close this window safely.
             </p>
           </div>
 
           <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 10px;">
-            <span style="font-size: 12px; color: var(--text-secondary);">
-              All ${totalDone} items saved and verified
+            <span style="font-size: calc(12px * var(--ui-scale)); color: var(--text-secondary);">
+              ${allSavedLine}
             </span>
           </div>
         </section>
@@ -476,8 +530,9 @@
 
         const flipHiddenClass =
           effLayout === "flip" && is3Clip && letKey !== activeFlipLetter ? "flip-inactive" : "";
+        const effZoom = computeEffectiveZoom(effLayout);
         const zoomClass =
-          activeZoom === "1:1" ? "zoom-1to1" : activeZoom === "2x" ? "zoom-2x" : "";
+          effZoom === "1:1" ? "zoom-1to1" : effZoom === "2x" ? "zoom-2x" : "";
 
         return `
           <div class="video-tile ${pickClass} ${flipHiddenClass} ${zoomClass}" data-tile-letter="${letKey}" role="group" aria-label="${ariaDesc}">
@@ -554,6 +609,7 @@
 
     // Decision Row (Method-driven)
     const voteHtml = buildVoteClusterHtml(st, derivedMiddle);
+    const effZoomForButtons = computeEffectiveZoom(effLayout);
 
     root.innerHTML = `
       ${renderPilotBannerIfNeeded(st)}
@@ -623,9 +679,9 @@
               <button type="button" class="seg-btn ${playbackSpeed === 1.0 ? "active" : ""}" data-speed="1.0">1.0×</button>
             </div>
             <div class="segmented-control" role="group" aria-label="Viewport Zoom">
-              <button type="button" class="seg-btn ${activeZoom === "fit" ? "active" : ""}" data-zoom="fit">Fit</button>
-              <button type="button" class="seg-btn ${activeZoom === "1:1" ? "active" : ""}" data-zoom="1:1">1:1</button>
-              <button type="button" class="seg-btn ${activeZoom === "2x" ? "active" : ""}" data-zoom="2x">2×</button>
+              <button type="button" class="seg-btn ${effZoomForButtons === "fit" ? "active" : ""}" data-zoom="fit">Fit</button>
+              <button type="button" class="seg-btn ${effZoomForButtons === "1:1" ? "active" : ""}" data-zoom="1:1">1:1</button>
+              <button type="button" class="seg-btn ${effZoomForButtons === "2x" ? "active" : ""}" data-zoom="2x">2×</button>
             </div>
           </div>
         </div>
@@ -797,6 +853,7 @@
           : "video-grid-3";
       gridEl.setAttribute("data-effective-layout", effLayout);
     }
+    const effZoom = computeEffectiveZoom(effLayout);
 
     let derivedMiddle = null;
     if (st.method === "bws_3" && draftBest && draftWorst && draftBest !== draftWorst) {
@@ -819,8 +876,8 @@
       if (effLayout === "flip" && is3Clip && letKey !== activeFlipLetter) {
         tile.classList.add("flip-inactive");
       }
-      if (activeZoom === "1:1") tile.classList.add("zoom-1to1");
-      if (activeZoom === "2x") tile.classList.add("zoom-2x");
+      if (effZoom === "1:1") tile.classList.add("zoom-1to1");
+      if (effZoom === "2x") tile.classList.add("zoom-2x");
 
       const oldBadge = tile.querySelector(".tile-pick-badge");
       if (oldBadge) oldBadge.remove();
@@ -884,7 +941,7 @@
       btn.classList.toggle("active", btn.getAttribute("data-flip-letter") === activeFlipLetter);
     });
     document.querySelectorAll("[data-zoom]").forEach((btn) => {
-      btn.classList.toggle("active", btn.getAttribute("data-zoom") === activeZoom);
+      btn.classList.toggle("active", btn.getAttribute("data-zoom") === effZoom);
     });
   }
 

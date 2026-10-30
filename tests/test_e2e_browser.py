@@ -209,7 +209,7 @@ def test_e2e_browser_flow_detail_visibility_resume_and_unblind_on_mock_clips(tmp
             assert video_src.startswith("/clip/clip_") and video_src.endswith(".mp4")
 
             # 2. Verify Detail Visibility:
-            # At 1440x900 (< 2548px), default automatic layout is 1:1 Flip (`flip`)
+            # At 1440x900 (< 2554px), default automatic layout is 1:1 Flip (`flip`)
             eff_layout = page.get_attribute("#video-grid-container", "data-effective-layout")
             assert eff_layout == "flip"
 
@@ -233,7 +233,7 @@ def test_e2e_browser_flow_detail_visibility_resume_and_unblind_on_mock_clips(tmp
             assert not page.locator('[data-tile-letter="B"]').evaluate("el => el.classList.contains('flip-inactive')")
             assert page.locator('[data-tile-letter="A"]').evaluate("el => el.classList.contains('flip-inactive')")
 
-            # Resize window to 3440x1440 (Director's screen >= 2548px) and verify automatic switch to native 3-Up (3 x 832px)
+            # Resize window to 3440x1440 (Director's screen >= 2554px) and verify automatic switch to native 3-Up (3 x 832px)
             page.set_viewport_size({"width": 3440, "height": 1440})
             page.wait_for_timeout(150)
             assert page.get_attribute("#video-grid-container", "data-effective-layout") == "native"

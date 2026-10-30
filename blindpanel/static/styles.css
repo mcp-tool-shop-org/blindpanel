@@ -4,7 +4,21 @@
    WCAG 2.2 AA compliant contrast, natural DOM focus order, touch-safe targets.
    ITU-T P.910 §8 / P.913 §11.7.2 calibrated 50% grey (#808080) video surround.
    Minimum font size >= 12px across all rules and responsive breakpoints.
+   Wide-screen text scale: every text size and control height is `calc(<px> * var(--ui-scale))`;
+   --ui-scale is 1 below 2554px and 1.25 at the native 3-up breakpoint and above (3440x1440), so no control or
+   label reads under 14px there while the 1440x900 and 1024x768 layouts are untouched.
    ========================================================================== */
+
+:root {
+  --ui-scale: 1;
+}
+
+/* Same breakpoint as NATIVE_3UP_MIN_WIDTH in app.js (3 x 834px tiles + 2 x 12px gaps + 2 x 14px padding) */
+@media (min-width: 2554px) {
+  :root {
+    --ui-scale: 1.25;
+  }
+}
 
 :root,
 [data-theme="light"] {
@@ -116,7 +130,7 @@ body {
   background-color: var(--bg-page);
   color: var(--text-primary);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale));
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
@@ -159,7 +173,7 @@ body {
   );
   color: var(--pilot-banner-text);
   border-bottom: 2px solid #f59e0b;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 700;
   letter-spacing: 0.01em;
   flex-shrink: 0;
@@ -178,7 +192,7 @@ body {
   padding: 2px 7px;
   border-radius: 3px;
   font-weight: 800;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -187,7 +201,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   background: #451a03;
   color: #ffffff;
   border: 1px solid #fde68a;
@@ -217,7 +231,7 @@ body {
 
 .brand-title {
   font-weight: 800;
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-scale));
   letter-spacing: -0.02em;
   display: inline-flex;
   align-items: center;
@@ -230,7 +244,7 @@ body {
   gap: 4px;
   padding: 2px 7px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 600;
   border: 1px solid var(--border-strong);
   background: var(--bg-elevated);
@@ -307,7 +321,7 @@ body {
 
 .prompt-id {
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   padding: 2px 6px;
   border-radius: 3px;
   background: var(--accent-primary-bg);
@@ -316,7 +330,7 @@ body {
 }
 
 .prompt-text {
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ui-scale));
   font-weight: 500;
   line-height: 1.38;
   color: var(--text-primary);
@@ -325,7 +339,7 @@ body {
 }
 
 .prompt-moment {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-scale));
   line-height: 1.38;
   color: var(--text-secondary);
   border-left: 2px solid var(--border-strong);
@@ -344,7 +358,7 @@ body {
   padding: 5px 14px;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   color: var(--text-secondary);
   flex-shrink: 0;
 }
@@ -368,13 +382,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 34px;
+  min-height: calc(34px * var(--ui-scale));
   padding: 0 11px;
   border-radius: 5px;
   border: 1px solid var(--border-strong);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-scale));
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
@@ -384,9 +398,9 @@ body {
 }
 
 .btn-sm {
-  min-height: 28px;
+  min-height: calc(28px * var(--ui-scale));
   padding: 0 9px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
 }
 
 .btn-primary {
@@ -439,7 +453,7 @@ body {
   background: var(--bg-elevated);
   color: var(--text-primary);
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 700;
   line-height: 1;
 }
@@ -447,7 +461,7 @@ body {
 /* ==========================================================================
    50% Grey Video Surround Stage (#808080 per ITU-T P.910 §8 / P.913 §11.7.2)
    Supports:
-   1. Native 3-Up (`video-grid-native-3`): 3 × 832px native tiles when window fits
+   1. Native 3-Up (`video-grid-native-3`): 3 × 832px native videos when window fits (default whenever it fits)
    2. Scaled 3-Up Fit (`video-grid-3`): 3 tiles side-by-side scaled to viewport
    3. Synchronized Single-Large-Clip Flip (`video-grid-flip-single`): 1:1 / large
       single tile with instant A / B / C flip (keys 1 / 2 / 3)
@@ -476,7 +490,7 @@ body {
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-scale));
   font-weight: 700;
 }
 
@@ -492,21 +506,22 @@ body {
   margin: auto;
 }
 
-/* 3-Clip Native 1:1 Grid (832px per tile when window width >= 2548px) */
+/* 3-Clip Native 1:1 Grid: the <video> is exactly 832x480 CSS px per tile when the window is >= 2554px wide.
+   The tile is 834x482 because its 1px border is inside the box (box-sizing: border-box). */
 .video-grid-native-3 {
   display: grid;
-  grid-template-columns: repeat(3, 832px);
+  grid-template-columns: repeat(3, 834px);
   gap: 12px;
   width: auto;
-  max-width: 2520px;
+  max-width: 2526px;
   align-items: center;
   justify-content: center;
   margin: auto;
 }
 
 .video-grid-native-3 .video-tile {
-  width: 832px;
-  height: 480px;
+  width: 834px;
+  height: 482px;
   max-height: none;
 }
 
@@ -522,9 +537,9 @@ body {
 }
 
 .video-grid-flip-single .video-tile {
-  width: min(832px, 100%);
-  max-width: 832px;
-  aspect-ratio: 832 / 480;
+  width: min(834px, 100%);
+  max-width: 834px;
+  aspect-ratio: 834 / 482;
   max-height: calc(100vh - 285px);
 }
 
@@ -621,7 +636,7 @@ body {
   border: 1.5px solid #ffffff;
   border-radius: 4px;
   font-weight: 800;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-scale));
   letter-spacing: 0.02em;
 }
 
@@ -635,7 +650,7 @@ body {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 800;
   letter-spacing: 0.02em;
 }
@@ -700,9 +715,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  min-height: 28px;
+  min-height: calc(28px * var(--ui-scale));
   padding: 0 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 600;
   color: var(--text-secondary);
   background: transparent;
@@ -733,8 +748,8 @@ body {
 
 .scrubber-bar {
   flex: 1;
-  height: 28px;
-  min-height: 28px;
+  height: calc(28px * var(--ui-scale));
+  min-height: calc(28px * var(--ui-scale));
   display: flex;
   align-items: center;
   position: relative;
@@ -775,17 +790,17 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
 }
 
 .action-question-title {
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-scale));
   color: var(--text-primary);
 }
 
 .action-question-hint {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   color: var(--text-secondary);
 }
 
@@ -808,7 +823,7 @@ body {
 }
 
 .action-clip-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 800;
   color: var(--text-primary);
   white-space: nowrap;
@@ -819,14 +834,14 @@ body {
 .action-btn {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 30px;
+  min-height: calc(30px * var(--ui-scale));
   padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid var(--border-strong);
   background: var(--bg-elevated);
   color: var(--text-primary);
   font-weight: 600;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   line-height: 1.15;
   text-align: center;
   display: inline-flex;
@@ -894,22 +909,22 @@ body {
 }
 
 .pick-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 700;
   padding: 0 4px;
   white-space: nowrap;
 }
 
 .pick-btn {
-  min-width: 34px;
-  min-height: 34px;
+  min-width: calc(34px * var(--ui-scale));
+  min-height: calc(34px * var(--ui-scale));
   padding: 0 8px;
   border-radius: 4px;
   border: 1px solid var(--border-strong);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -945,13 +960,13 @@ body {
   width: 100%;
   min-width: 130px;
   max-width: 270px;
-  height: 34px;
+  height: calc(34px * var(--ui-scale));
   padding: 0 10px;
   border-radius: 5px;
   border: 1px solid var(--border-strong);
   background: var(--bg-input);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
 }
 
 /* Pre-Flight Table & Controls */
@@ -1010,7 +1025,7 @@ body {
 .preflight-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   line-height: 1.35;
 }
 
@@ -1081,7 +1096,7 @@ body {
 }
 
 .panel-card h2 {
-  font-size: 15.5px;
+  font-size: calc(15.5px * var(--ui-scale));
   font-weight: 800;
   letter-spacing: -0.01em;
 }
@@ -1100,20 +1115,20 @@ body {
 }
 
 .stat-value {
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-scale));
   font-weight: 800;
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-scale));
   color: var(--text-secondary);
 }
 
 /* Responsive tuning for 1024x768 — Preserves >= 12px text and >= 28-32px targets */
 @media (max-width: 1180px) {
   body {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
     line-height: 1.35;
   }
   .top-bar,
@@ -1128,17 +1143,17 @@ body {
     gap: 4px 10px;
   }
   .prompt-text {
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--ui-scale));
   }
   .prompt-moment {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .action-row {
     padding: 4px 10px;
     gap: 3px;
   }
   .action-question-title {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .action-grid-3 {
     gap: 6px;
@@ -1148,38 +1163,38 @@ body {
     gap: 3px;
   }
   .action-btn {
-    min-height: 30px;
+    min-height: calc(30px * var(--ui-scale));
     padding: 2px 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .btn {
-    min-height: 32px;
+    min-height: calc(32px * var(--ui-scale));
     padding: 0 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .btn-sm {
-    min-height: 28px;
+    min-height: calc(28px * var(--ui-scale));
     padding: 0 7px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .seg-btn {
-    min-height: 28px;
+    min-height: calc(28px * var(--ui-scale));
     padding: 0 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .pick-group {
     padding: 2px 4px;
     gap: 3px;
   }
   .pick-label {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
     padding: 0 2px;
   }
   .pick-btn {
-    min-width: 30px;
-    min-height: 32px;
+    min-width: calc(30px * var(--ui-scale));
+    min-height: calc(32px * var(--ui-scale));
     padding: 0 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .notes-cluster {
     min-width: 0;
@@ -1189,8 +1204,8 @@ body {
   .notes-input {
     min-width: 110px;
     max-width: 195px;
-    height: 32px;
-    font-size: 12px;
+    height: calc(32px * var(--ui-scale));
+    font-size: calc(12px * var(--ui-scale));
     padding: 0 7px;
   }
   .scrubber-box {
@@ -1202,7 +1217,7 @@ body {
     gap: 6px;
   }
   .preflight-table {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
     line-height: 1.28;
   }
   .preflight-table th,
@@ -1218,16 +1233,16 @@ body {
     gap: 6px;
   }
   .panel-card h2 {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-scale));
   }
   .stat-box {
     padding: 4px 6px;
   }
   .stat-value {
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-scale));
   }
   .stat-label {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale));
   }
   .video-tile {
     max-height: calc(100vh - 295px);

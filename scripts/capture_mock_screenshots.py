@@ -1,8 +1,9 @@
-"""capture_mock_screenshots.py — Capture 1440×900 and 1024×768 screenshots of Block 1 using synthetic mock clips only.
+"""capture_mock_screenshots.py — Capture the repository screenshot set using synthetic mock clips only.
 
 Enforces Rule 4 & Rule 5:
 - Generates synthetic mock clips via `blindpanel.mock_clips` in a temporary scratch directory.
-- Captures 1440×900 and 1024×768 screenshots in both 3-Up and 1:1 Flip layouts under `docs/screenshots/`.
+- Captures the Block 1 rating screen at 3440×1440 (native 3-up default and flip), 1440×900 and 1024×768
+  (3-Up and 1:1 Flip), plus the Block 2 optional card at 1440×900 and 3440×1440, under `docs/screenshots/`.
 - Stamps every PNG with the `blindpanel-mock-clip-generator-v1` metadata marker and writes
   `docs/screenshots/mock_manifest.json`.
 """
@@ -85,7 +86,7 @@ def main() -> int:
                 browser = p.chromium.launch(**launch_kwargs)
 
                 # Item index 5 in Block 1 is Item 6 / 43 (M1 manipulation prompt with Q2)
-                for width, height in [(1440, 900), (1024, 768)]:
+                for width, height in [(3440, 1440), (1440, 900), (1024, 768)]:
                     for layout_mode in ["3up", "flip"]:
                         ctx = browser.new_context(viewport={"width": width, "height": height})
                         page = ctx.new_page()
@@ -118,6 +119,33 @@ def main() -> int:
                         captured_names.append(fname)
                         print(f"Captured and stamped mock screenshot: {out_path}")
                         ctx.close()
+
+                # Block 2 optional card: rate every Block 1 item through the session engine, then open the card.
+                n_block1 = len(cfg["blocks"][0]["items"])
+                for gi in range(n_block1):
+                    st = session.get_public_state(mode="live", requested_global_index=gi)
+                    letters = st["letters"]
+                    payload = {"mode": "live", "global_index": gi, "best_letter": letters[0], "worst_letter": letters[-1]}
+                    if st["ask_q2"]:
+                        payload["q2_by_letter"] = {letter: "yes" for letter in letters}
+                    session.submit_rating(payload)
+                    if session.get_public_state(mode="live")["interstitial"] == "rest_break":
+                        session.resume_after_break(mode="live")
+                assert session.get_public_state(mode="live")["interstitial"] == "block_break"
+
+                for width, height in [(3440, 1440), (1440, 900)]:
+                    ctx = browser.new_context(viewport={"width": width, "height": height})
+                    page = ctx.new_page()
+                    page.goto(f"{base_url}/", wait_until="networkidle")
+                    page.wait_for_selector("#btn-resume-block2")
+                    page.wait_for_timeout(300)
+                    fname = f"block2-card-mock-clips-{width}x{height}.png"
+                    out_path = out_dir / fname
+                    page.screenshot(path=str(out_path), full_page=False)
+                    stamp_png_with_mock_marker(out_path)
+                    captured_names.append(fname)
+                    print(f"Captured and stamped mock screenshot: {out_path}")
+                    ctx.close()
 
                 browser.close()
         finally:

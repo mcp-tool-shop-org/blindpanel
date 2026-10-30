@@ -3,19 +3,35 @@
   "screenshots": {
     "block1-mock-clips-3up-1024x768.png": {
       "source_generator": "blindpanel-mock-clip-generator-v1",
-      "sha256": "4931bb85860d7525f624b7b759795bd0ee190e0330839b30507eeb9865240f82"
+      "sha256": "da2362baa173b980e15f69866d199ba7bdf873de0023aebca1de53c8e30ec95d"
     },
     "block1-mock-clips-3up-1440x900.png": {
       "source_generator": "blindpanel-mock-clip-generator-v1",
-      "sha256": "f57c27bd89b0673de6c89d6f6e951241e3693385aa0e6a9c6de910a12d7ec1bf"
+      "sha256": "19a32ad6cf8fa872cf4eb5d8e3ce6074d5411cb0f2544a4c20ea714bb5d35ee8"
+    },
+    "block1-mock-clips-3up-3440x1440.png": {
+      "source_generator": "blindpanel-mock-clip-generator-v1",
+      "sha256": "5c5cd2895634b7108e08577593afcf01d9e520539fb5ca5e84d84e2c243b8ea5"
     },
     "block1-mock-clips-flip-1024x768.png": {
       "source_generator": "blindpanel-mock-clip-generator-v1",
-      "sha256": "9371faefc851a748aba3761a382d3ef2a98753da021917d4172aae5c1edc1ef4"
+      "sha256": "0b1a6468c88016bc77caa6ebd8d80eadb5549da9fd4828f05301513312dc4bbb"
     },
     "block1-mock-clips-flip-1440x900.png": {
       "source_generator": "blindpanel-mock-clip-generator-v1",
-      "sha256": "c5e04c73f9b23793e5f465733084c425f0a8fc08718cfc13f7cedf1b5a066a89"
+      "sha256": "cc7545c0a1356ae4fd5d98e9abc0cdbe81b5a3fbdaebe14323d27563b5d92fcf"
+    },
+    "block1-mock-clips-flip-3440x1440.png": {
+      "source_generator": "blindpanel-mock-clip-generator-v1",
+      "sha256": "5668dfcfdc6b95bc3e11bd5d57660ddcbb8a2e02ef3eef09d37d951c8989ca92"
+    },
+    "block2-card-mock-clips-1440x900.png": {
+      "source_generator": "blindpanel-mock-clip-generator-v1",
+      "sha256": "7f28cb79f97ec00eb60a74f199ef88e5816069ae593115abbc3eba3e1e7ad8b4"
+    },
+    "block2-card-mock-clips-3440x1440.png": {
+      "source_generator": "blindpanel-mock-clip-generator-v1",
+      "sha256": "d6acbb3acadaf75d4f78d0e23e4666c22b671ec2811e264df7cd303379395340"
     }
   }
 }
