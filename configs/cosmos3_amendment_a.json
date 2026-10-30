@@ -1,0 +1,2971 @@
+{
+  "schema_version": "blindpanel-config-v1",
+  "study_id": "cosmos3-super-quant-amendment-a-v1",
+  "title": "Cosmos 3 Super Quant Test \u2014 3 Arms (Block 1: BF16, Q1, Q3 \u00b7 43 Items) + optional Nano block (Block 2: Nano vs BF16 \u00b7 42 Items)",
+  "rng_seed": 20261030,
+  "clip_spec": {
+    "width": 832,
+    "height": 480,
+    "frames": 61,
+    "fps": "24.0000",
+    "seconds": 2.54,
+    "hardware_note": "B200 Same-Card UUID"
+  },
+  "question2_spec": {
+    "id": "action_completion",
+    "prompt": "How far does the robot get with the action within the 2.5 s clip?",
+    "per_clip": true,
+    "options": [
+      {
+        "id": "yes",
+        "label": "Yes (completes it)",
+        "score": 1.0,
+        "key": "Y"
+      },
+      {
+        "id": "partly",
+        "label": "Partly (clearly under way)",
+        "score": 0.5,
+        "key": "P"
+      },
+      {
+        "id": "no",
+        "label": "No (not achieved)",
+        "score": 0.0,
+        "key": "N"
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "block_id": "block1_super_bws3",
+      "title": "Main Block 1 \u2014 Pick Best & Worst of 3",
+      "optional": false,
+      "method": "bws_3",
+      "arms": [
+        "BF16",
+        "Q1",
+        "Q3"
+      ],
+      "allow_unsure": false,
+      "allow_skip": false,
+      "require_full_play": true,
+      "break_after_item": 23,
+      "enforce_no_adjacent_prompt": true,
+      "enforce_counterbalance_bws3": true,
+      "items": [
+        {
+          "cell_id": "M3-s1111-warmup",
+          "base_cell_id": "M3-s1111",
+          "prompt_id": "M3",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A robot gripper positioned close to a grey control panel moves in and presses a red button. Close-up, static camera, realistic.",
+          "rater_cue": "the red button and the gripper through the clip",
+          "required_action": "move in and press",
+          "estimated_seconds": "~1.0 s",
+          "estimated_max_seconds": 1.0,
+          "clip_seconds": 2.54,
+          "is_warmup": true,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M3-s1111.mp4",
+              "sha256": "77931b4f678fd8c612b263b99552c43f0cebae8e5f0f39520699cb2d3f180e14"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M3-s1111.mp4",
+              "sha256": "34e8bcfecbb42647e1efd93f1ced936d87ba1136e7ed309d763ab80f2197dca2"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M3-s1111.mp4",
+              "sha256": "d392acc76eeff777055fa8fffc4482cfb44ea37a487bfbbb23a6939aa522b6f0"
+            }
+          }
+        },
+        {
+          "cell_id": "L1-s2026-warmup",
+          "base_cell_id": "L1-s2026",
+          "prompt_id": "L1",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A humanoid robot walks steadily down a narrow office hallway. Tracking camera from behind, realistic.",
+          "rater_cue": "the humanoid robot's legs and torso along the hallway through the clip",
+          "required_action": "walking (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": true,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L1-s2026.mp4",
+              "sha256": "91123fd635bdf7efa78d73773aa7cfa5435cae00ae65e8824c0e42f5fc67c448"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L1-s2026.mp4",
+              "sha256": "2fb7f0d28a900596018a4aecc8e74682e6289e18a81f68fc3217dbaa807f3664"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L1-s2026.mp4",
+              "sha256": "fadee9779e033dde44b28c4abb9ab952655e25fab8e0c10ac068d6c36cfb4834"
+            }
+          }
+        },
+        {
+          "cell_id": "S4-s4242-warmup",
+          "base_cell_id": "S4-s4242",
+          "prompt_id": "S4",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "Wind moves tall grass across an open field under a cloudy sky. Static camera, photoreal.",
+          "rater_cue": "the tall grass and the sky across the field through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": true,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S4-s4242.mp4",
+              "sha256": "a38a2b4870c91e2223353ae4c4a16dd4578f4cd8e48149121a63082b74e2fe8d"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S4-s4242.mp4",
+              "sha256": "a6275093c45f2d1fd9b660f9b164dc35eb2934f3d699e1b3313fb59051d701b8"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S4-s4242.mp4",
+              "sha256": "f3ed8bc4940505badb1c7c35c05177feb76c9edf4edad84d3bab5878ebc055cc"
+            }
+          }
+        },
+        {
+          "cell_id": "M2-s1111",
+          "base_cell_id": "M2-s1111",
+          "prompt_id": "M2",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A two-armed robot at a kitchen counter grasps a ceramic bowl with one gripper and lifts it off the counter. Static camera, soft daylight, realistic.",
+          "rater_cue": "the ceramic bowl and the gripper through the clip",
+          "required_action": "close the gripper and raise the bowl",
+          "estimated_seconds": "1.5\u20132.0 s",
+          "estimated_max_seconds": 2.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q1",
+            "Q3",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M2-s1111.mp4",
+              "sha256": "d20195fe82636d57e8c37e250ef6f6ac06c340339b6b33fd79e72921ee53a44a"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M2-s1111.mp4",
+              "sha256": "6f11ec86c0731875d944495bb80b0770738d21c484583eacef0d32b09cc50131"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M2-s1111.mp4",
+              "sha256": "566c45e04db516741721fbae418d04304486d31efbb049c21c1ddfa8b0ff7c53"
+            }
+          }
+        },
+        {
+          "cell_id": "S2-s2026",
+          "base_cell_id": "S2-s2026",
+          "prompt_id": "S2",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "Three people sit at a wooden table with teacups in a cafe, talking and laughing. Handheld camera, warm indoor light, realistic.",
+          "rater_cue": "the three people's faces, hands, and teacups at the table through the clip",
+          "required_action": "none (conversation, continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S2-s2026.mp4",
+              "sha256": "4db5690b568ca3abaf77ce3e945166cc7d3dcdb19115ccecca7a696a17b3f985"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S2-s2026.mp4",
+              "sha256": "1eff64e79f97f3dfc1497f5c105d9c560b6b9343adec5ee7ce121b63ec36f500"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S2-s2026.mp4",
+              "sha256": "4f7b82073b3336ba7dfc652e8e65ddfff7451356704af996e13fdc3f2738177c"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s2026",
+          "base_cell_id": "M1-s2026",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q1",
+            "Q3",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s2026.mp4",
+              "sha256": "f3b0839ef61e5668a580f0753986f319a0394ed4677081d3c70ce64d11585964"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M1-s2026.mp4",
+              "sha256": "a7c4c44c0fa434c24ed78064357716bc74c3ef7175513b3479933ccafc58f812"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M1-s2026.mp4",
+              "sha256": "80811ae7abfff484ab3ace6147a5905678ba04b286121e0113ab5ac58cc44922"
+            }
+          }
+        },
+        {
+          "cell_id": "L3-s1111",
+          "base_cell_id": "L3-s1111",
+          "prompt_id": "L3",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A person jogs steadily along the waterline of a beach at sunrise, seen from the side. Side tracking camera, photoreal.",
+          "rater_cue": "the person's legs and stride along the waterline through the clip",
+          "required_action": "jogging (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q3",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L3-s1111.mp4",
+              "sha256": "e61e0b52fb5a31f0ea6385be488f075799573b5c2b0dd605e08a80738d9df409"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L3-s1111.mp4",
+              "sha256": "daeb153c55e918fcc41e5ea22fa634fda9f4a76e63b02e574600e7c92c32fe0a"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L3-s1111.mp4",
+              "sha256": "434a87f0f5896a911e309f7e39db38ca6168f489e66b4d8d928a83b7351905d9"
+            }
+          }
+        },
+        {
+          "cell_id": "S3-s1111",
+          "base_cell_id": "S3-s1111",
+          "prompt_id": "S3",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "A city street at night in light rain; cars pass with headlights reflecting on the wet asphalt. Static camera, photoreal.",
+          "rater_cue": "the passing cars and the headlight reflections on the wet asphalt through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q3",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S3-s1111.mp4",
+              "sha256": "bd846640dd95bce8f8ec0f942973850de45c1d7364a4d6d0ffc6e955d659cdc8"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S3-s1111.mp4",
+              "sha256": "085e9bfa5d89a7fa90bfecedcf92c606a08c82c2fdfbc54337199d19472e3608"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S3-s1111.mp4",
+              "sha256": "f2a31d925a3c8d5b8af47617138578b36d897ef7c1ac8f062129aea4ef81f3ab"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s2026",
+          "base_cell_id": "L2-s2026",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s2026.mp4",
+              "sha256": "9a5f75073e708c06402e7979b550119487eee6818120e529fc23c001cff52052"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L2-s2026.mp4",
+              "sha256": "a4e35855d3770eb7f57f078c636b02cb378042e5d083c755e5c766f8fb0c33bc"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L2-s2026.mp4",
+              "sha256": "387cfbfdb48e4ede3639dae85aba26d54fef1c24d889b616c2e2a0ce3fb05661"
+            }
+          }
+        },
+        {
+          "cell_id": "M4-s1111",
+          "base_cell_id": "M4-s1111",
+          "prompt_id": "M4",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A robot hand holds a glass tilted over a white bowl while water pours out. Static camera, bright light, realistic.",
+          "rater_cue": "the tilted glass, the water, and the white bowl through the clip",
+          "required_action": "continuous pouring (starts mid-pour)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M4-s1111.mp4",
+              "sha256": "5c063ff6cba0987ff8f405c082869e7b73f4b1128c32f63eb699f0a4d598f7c6"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M4-s1111.mp4",
+              "sha256": "e06ded8401995204936bb42703cce817cc91e17e56d04d4b8a9d54ae076c6891"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M4-s1111.mp4",
+              "sha256": "670b6a1deb1180187283102e7245183cf00b09fe6c6cbf18613d89fcda32051b"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s2026",
+          "base_cell_id": "S1-s2026",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "Q3",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s2026.mp4",
+              "sha256": "79dc75f141df436678b930f90a93b6953b76f0debcba354afd20c0282efe34fe"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S1-s2026.mp4",
+              "sha256": "ae3c410a66ad81268a960911803592dd3fea2c5524c5705899e8603d4db8e42a"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S1-s2026.mp4",
+              "sha256": "9445fb9f9b152cbd2f1a748fd630794700e29a2014a9f9a402d1787e64e0cb94"
+            }
+          }
+        },
+        {
+          "cell_id": "L4-s1111",
+          "base_cell_id": "L4-s1111",
+          "prompt_id": "L4",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A small wheeled delivery robot rolls along a city sidewalk. Static camera, daylight, realistic.",
+          "rater_cue": "the wheeled robot and the sidewalk surface through the clip",
+          "required_action": "rolling (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L4-s1111.mp4",
+              "sha256": "e09960d3ee72386b9b1916f7ab89bf653160e947e6f728d46963391c5222a9f8"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L4-s1111.mp4",
+              "sha256": "d28943d5cf881f71358f13a831f0b75ce84e8f513aa0caa5fa758b73c2e94200"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L4-s1111.mp4",
+              "sha256": "0401bca617561e16ebb9c649efb0a2495c72570edd5b414003c04284ad55de16"
+            }
+          }
+        },
+        {
+          "cell_id": "M3-s2026",
+          "base_cell_id": "M3-s2026",
+          "prompt_id": "M3",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A robot gripper positioned close to a grey control panel moves in and presses a red button. Close-up, static camera, realistic.",
+          "rater_cue": "the red button and the gripper through the clip",
+          "required_action": "move in and press",
+          "estimated_seconds": "~1.0 s",
+          "estimated_max_seconds": 1.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M3-s2026.mp4",
+              "sha256": "f71f274bf44ca92526fb7db7a126b676e519bac09ceeda6d8882764d8030bfd0"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M3-s2026.mp4",
+              "sha256": "03d7c6f38f46cc04c602e5cf4f00fc870ab08590a44e86f1d2ff95f3bdbe86ce"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M3-s2026.mp4",
+              "sha256": "85eae71092c60a77e8c5bacb2921bbab6be70c9237e9ae3dcebfd3e15a0ffe82"
+            }
+          }
+        },
+        {
+          "cell_id": "L1-s1111",
+          "base_cell_id": "L1-s1111",
+          "prompt_id": "L1",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A humanoid robot walks steadily down a narrow office hallway. Tracking camera from behind, realistic.",
+          "rater_cue": "the humanoid robot's legs and torso along the hallway through the clip",
+          "required_action": "walking (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L1-s1111.mp4",
+              "sha256": "f01d33fc959a1aa6e5ef9a840f5bed22c4c789263b1c928124a6edf38984d206"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L1-s1111.mp4",
+              "sha256": "7f5eb5fb688adc348147829e4c55a392d7049287e786bfd5b33cb543d16d3067"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L1-s1111.mp4",
+              "sha256": "60f9c8af8c3821897bba94b7e3a186c132dc2869432f00219a5eb141834d7feb"
+            }
+          }
+        },
+        {
+          "cell_id": "S4-s1111",
+          "base_cell_id": "S4-s1111",
+          "prompt_id": "S4",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Wind moves tall grass across an open field under a cloudy sky. Static camera, photoreal.",
+          "rater_cue": "the tall grass and the sky across the field through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S4-s1111.mp4",
+              "sha256": "0b0bc7d0aff78004421853e16492d2eb261fde3cdf7f62ccb9deac5dc7408a77"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S4-s1111.mp4",
+              "sha256": "60f0ac435e8c5485f16720f6f7dbd80cab089e09beca8af28d3d4473de908389"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S4-s1111.mp4",
+              "sha256": "ec76c473e09431471cca9f8f92337b360c28ac0a8e353b6d0cc3e8c06da0cbc6"
+            }
+          }
+        },
+        {
+          "cell_id": "M2-s2026",
+          "base_cell_id": "M2-s2026",
+          "prompt_id": "M2",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A two-armed robot at a kitchen counter grasps a ceramic bowl with one gripper and lifts it off the counter. Static camera, soft daylight, realistic.",
+          "rater_cue": "the ceramic bowl and the gripper through the clip",
+          "required_action": "close the gripper and raise the bowl",
+          "estimated_seconds": "1.5\u20132.0 s",
+          "estimated_max_seconds": 2.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M2-s2026.mp4",
+              "sha256": "a26ec6a42f789351edc6773de199629850caa2366fe461a14501078e67c17404"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M2-s2026.mp4",
+              "sha256": "7641e3b01845b4434b2167a08b1aa9ad50ba1ac828c510e6b7fce26a301d6280"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M2-s2026.mp4",
+              "sha256": "c74f2252f1d05f835db8eba663f1d2938c4261f551090fd876dcdf53ad3f0fcd"
+            }
+          }
+        },
+        {
+          "cell_id": "L3-s2026",
+          "base_cell_id": "L3-s2026",
+          "prompt_id": "L3",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A person jogs steadily along the waterline of a beach at sunrise, seen from the side. Side tracking camera, photoreal.",
+          "rater_cue": "the person's legs and stride along the waterline through the clip",
+          "required_action": "jogging (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L3-s2026.mp4",
+              "sha256": "22c77732ab63a4e7ca6456df8570a932968b3089d9d697c405f5265fb0d9650a"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L3-s2026.mp4",
+              "sha256": "c87550bb0335c1caa4a3db2bac722dec88c1a26f874544b413146b316a928929"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L3-s2026.mp4",
+              "sha256": "e0d187edc4369ce7362912ff27daa89935901ca79f9dfb2d6a42292c6e0fae00"
+            }
+          }
+        },
+        {
+          "cell_id": "S2-s1111",
+          "base_cell_id": "S2-s1111",
+          "prompt_id": "S2",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Three people sit at a wooden table with teacups in a cafe, talking and laughing. Handheld camera, warm indoor light, realistic.",
+          "rater_cue": "the three people's faces, hands, and teacups at the table through the clip",
+          "required_action": "none (conversation, continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "Q3",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S2-s1111.mp4",
+              "sha256": "0e2807e9f2b8686731d0e2962a3bbb880eb7cf76e0fbe5facd5d1b28bd6244f1"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S2-s1111.mp4",
+              "sha256": "00d65a73069bd5433d4ad5bbccbe2618415d27bb3bb463d9260726d99efb620b"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S2-s1111.mp4",
+              "sha256": "982404bc19c2eb2be2634876268c3397e6fcbcd1f3c941f3916b1b5dbd0fc14a"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s2026-rep2",
+          "base_cell_id": "M1-s2026",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "M1-s2026",
+          "ask_q2": true,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s2026.mp4",
+              "sha256": "f3b0839ef61e5668a580f0753986f319a0394ed4677081d3c70ce64d11585964"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M1-s2026.mp4",
+              "sha256": "a7c4c44c0fa434c24ed78064357716bc74c3ef7175513b3479933ccafc58f812"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M1-s2026.mp4",
+              "sha256": "80811ae7abfff484ab3ace6147a5905678ba04b286121e0113ab5ac58cc44922"
+            }
+          }
+        },
+        {
+          "cell_id": "L4-s2026",
+          "base_cell_id": "L4-s2026",
+          "prompt_id": "L4",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A small wheeled delivery robot rolls along a city sidewalk. Static camera, daylight, realistic.",
+          "rater_cue": "the wheeled robot and the sidewalk surface through the clip",
+          "required_action": "rolling (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "BF16",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L4-s2026.mp4",
+              "sha256": "752c9a4929c0d59c15271b2b84c945a30672249ac236097754fbf700daaa6d08"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L4-s2026.mp4",
+              "sha256": "f03e9759d5da005b474e68b1727e757c459daf5810f38a798db37c50b9a99bc5"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L4-s2026.mp4",
+              "sha256": "9bebbfebd01bd9af6c78718823bec61dd619c170ea3889b3a3a0a814a1499bb5"
+            }
+          }
+        },
+        {
+          "cell_id": "M4-s2026",
+          "base_cell_id": "M4-s2026",
+          "prompt_id": "M4",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A robot hand holds a glass tilted over a white bowl while water pours out. Static camera, bright light, realistic.",
+          "rater_cue": "the tilted glass, the water, and the white bowl through the clip",
+          "required_action": "continuous pouring (starts mid-pour)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q1",
+            "BF16",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M4-s2026.mp4",
+              "sha256": "c4f314ffaeda74205992229cd234d073ca69b575332a142072099a014e032b93"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M4-s2026.mp4",
+              "sha256": "510b97249987e99faded6897c5e066dc145d2bcb1cc898537a2b0b805bf8ae5b"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M4-s2026.mp4",
+              "sha256": "abd0535e4323c4531a9f8359acc5abe84c35bc23bca43a943c252d07d8403c15"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s2026-rep2",
+          "base_cell_id": "L2-s2026",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "L2-s2026",
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s2026.mp4",
+              "sha256": "9a5f75073e708c06402e7979b550119487eee6818120e529fc23c001cff52052"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L2-s2026.mp4",
+              "sha256": "a4e35855d3770eb7f57f078c636b02cb378042e5d083c755e5c766f8fb0c33bc"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L2-s2026.mp4",
+              "sha256": "387cfbfdb48e4ede3639dae85aba26d54fef1c24d889b616c2e2a0ce3fb05661"
+            }
+          }
+        },
+        {
+          "cell_id": "S3-s2026",
+          "base_cell_id": "S3-s2026",
+          "prompt_id": "S3",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "A city street at night in light rain; cars pass with headlights reflecting on the wet asphalt. Static camera, photoreal.",
+          "rater_cue": "the passing cars and the headlight reflections on the wet asphalt through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "Q1",
+            "BF16"
+          ],
+          "break_after": true,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S3-s2026.mp4",
+              "sha256": "825b7abf6b6609617f27c35cea81afcca1a9e660ed5c0d4487133575b5122794"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S3-s2026.mp4",
+              "sha256": "7c3ac008056a12a3b620d95efd7020b112a61f0186514727781ceba4f2504890"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S3-s2026.mp4",
+              "sha256": "c5b137a694a28b5b83b82f0c8cb941747c19aa9dccb4f680396fbddcf71a89a6"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s1111",
+          "base_cell_id": "L2-s1111",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "Q3",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s1111.mp4",
+              "sha256": "a90b4e9895631284ca232ee950142ecfd7393291af8b0e24423e201946c2a840"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L2-s1111.mp4",
+              "sha256": "8a27184db954c4157a7646351669c7a6ce086f3a5e3fdcae6386617167e942df"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L2-s1111.mp4",
+              "sha256": "a821657aad03c93b74c69bda5d772a11ac2a0404e8bf4f789ccf8442bb88e3d2"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s4242",
+          "base_cell_id": "M1-s4242",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s4242.mp4",
+              "sha256": "0c79728b8ae3c7c77e26cbad851cf5a4c8910bb36790c266ab160a72ce68d6ef"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M1-s4242.mp4",
+              "sha256": "6a8995b48f228598b8122b4a29097fe624ddb05ced1a5707c43a55c9374dd2ab"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M1-s4242.mp4",
+              "sha256": "2a7c1c5fbdba4bdf6e98a44f37f8751f4a6914a4aa15a8648ec15d0654f6a19b"
+            }
+          }
+        },
+        {
+          "cell_id": "L1-s2026",
+          "base_cell_id": "L1-s2026",
+          "prompt_id": "L1",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A humanoid robot walks steadily down a narrow office hallway. Tracking camera from behind, realistic.",
+          "rater_cue": "the humanoid robot's legs and torso along the hallway through the clip",
+          "required_action": "walking (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "Q3",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L1-s2026.mp4",
+              "sha256": "91123fd635bdf7efa78d73773aa7cfa5435cae00ae65e8824c0e42f5fc67c448"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L1-s2026.mp4",
+              "sha256": "2fb7f0d28a900596018a4aecc8e74682e6289e18a81f68fc3217dbaa807f3664"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L1-s2026.mp4",
+              "sha256": "fadee9779e033dde44b28c4abb9ab952655e25fab8e0c10ac068d6c36cfb4834"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s1111",
+          "base_cell_id": "S1-s1111",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s1111.mp4",
+              "sha256": "058ccc633041bff91ea68af211e37fa82d62a178d96e865efe95f489df936c7d"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S1-s1111.mp4",
+              "sha256": "024c6bb0e482e1ff8496505efb3eac067dfdae30af7c0246eb007c951fdce680"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S1-s1111.mp4",
+              "sha256": "2909f975b1252ae1e6f28dea38a1e0761237dd3a0caf3fdb8843e2b6177ed0d1"
+            }
+          }
+        },
+        {
+          "cell_id": "M3-s1111",
+          "base_cell_id": "M3-s1111",
+          "prompt_id": "M3",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A robot gripper positioned close to a grey control panel moves in and presses a red button. Close-up, static camera, realistic.",
+          "rater_cue": "the red button and the gripper through the clip",
+          "required_action": "move in and press",
+          "estimated_seconds": "~1.0 s",
+          "estimated_max_seconds": 1.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "BF16",
+            "Q3",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M3-s1111.mp4",
+              "sha256": "77931b4f678fd8c612b263b99552c43f0cebae8e5f0f39520699cb2d3f180e14"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M3-s1111.mp4",
+              "sha256": "34e8bcfecbb42647e1efd93f1ced936d87ba1136e7ed309d763ab80f2197dca2"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M3-s1111.mp4",
+              "sha256": "d392acc76eeff777055fa8fffc4482cfb44ea37a487bfbbb23a6939aa522b6f0"
+            }
+          }
+        },
+        {
+          "cell_id": "S4-s2026",
+          "base_cell_id": "S4-s2026",
+          "prompt_id": "S4",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "Wind moves tall grass across an open field under a cloudy sky. Static camera, photoreal.",
+          "rater_cue": "the tall grass and the sky across the field through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "BF16",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S4-s2026.mp4",
+              "sha256": "8a767d00615a263dc2b98ad36d1c35a3c83f7ffc93bbf3eeb256b68aa353e444"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S4-s2026.mp4",
+              "sha256": "4a205cc2f0c96ef3d84391f5f65df658977e0d22a33ea82d3fa42060a5402401"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S4-s2026.mp4",
+              "sha256": "7d2b172062a28dc82bbd5b7f65343467124eab9d3a2b6ebdc142ed5612ae4e28"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s1111",
+          "base_cell_id": "M1-s1111",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s1111.mp4",
+              "sha256": "26738e93925931849239a9ee0aa53f88a98c89c7b7046b946fea21df4b259a5b"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M1-s1111.mp4",
+              "sha256": "97bad351b5e4fd3d462b3fa32d637a2e6e5dc2b74ed55d24088ace86defbc7a4"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M1-s1111.mp4",
+              "sha256": "6e59259ff3bbb63e6fcba0e9b012da6cd9a68bc8cbb54b17341ef05dfd9cbad2"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s4242",
+          "base_cell_id": "L2-s4242",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s4242.mp4",
+              "sha256": "d7fcc6ebc68b5af3858e3bbda8cc83fec6ecac8a8f018dc1d677d113ede6a781"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L2-s4242.mp4",
+              "sha256": "ddf3c1c540041fcd37e7feb9d6dedcffb459f0e57135bcef2108eed2b9b3caea"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L2-s4242.mp4",
+              "sha256": "766c1fc2963468c8b971bd260e624792058c2dcb9a948c9624500de93e0af5ed"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s4242",
+          "base_cell_id": "S1-s4242",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s4242.mp4",
+              "sha256": "52583e57c452235b7779d46449cf1db30a69de92e787150762bd2a9af602dba8"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S1-s4242.mp4",
+              "sha256": "44684af326bbf2b430371bb317530d36aad1aabc4afbafe174b4a4dd5b70f16c"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S1-s4242.mp4",
+              "sha256": "c5f0f5d2fc8062f1f9c3e82d4b8604b1ae0dd30340e7da05c7acc84ac507d0ca"
+            }
+          }
+        },
+        {
+          "cell_id": "M3-s4242",
+          "base_cell_id": "M3-s4242",
+          "prompt_id": "M3",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A robot gripper positioned close to a grey control panel moves in and presses a red button. Close-up, static camera, realistic.",
+          "rater_cue": "the red button and the gripper through the clip",
+          "required_action": "move in and press",
+          "estimated_seconds": "~1.0 s",
+          "estimated_max_seconds": 1.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "Q1",
+            "BF16",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M3-s4242.mp4",
+              "sha256": "0c0ac4a2a74bc623c9470e7a0b52ec82fdbc1b8ce1672b93e56ce6995e949735"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M3-s4242.mp4",
+              "sha256": "870ac2cf85aba40a350a32ee04f17f8873f145d33cd3bb42d56cb7ae1346d433"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M3-s4242.mp4",
+              "sha256": "f5d5a6041fb43f82d710f42d19c3d052d389c205bdfa7121d31a82cd680269e1"
+            }
+          }
+        },
+        {
+          "cell_id": "L3-s4242",
+          "base_cell_id": "L3-s4242",
+          "prompt_id": "L3",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A person jogs steadily along the waterline of a beach at sunrise, seen from the side. Side tracking camera, photoreal.",
+          "rater_cue": "the person's legs and stride along the waterline through the clip",
+          "required_action": "jogging (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "BF16",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L3-s4242.mp4",
+              "sha256": "0578d03387c0413b12ff0e6781f722b3be9f8b7b70f44bd22ee81f832d2fb4e1"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L3-s4242.mp4",
+              "sha256": "4ecb651aa9ec6d1ab6e0a4677c18b962be250abfa580c027ebe546f931395451"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L3-s4242.mp4",
+              "sha256": "b88efea317a63fc38e40e7da59c632f1fc2d0abef57986c666bb428e5d3edb54"
+            }
+          }
+        },
+        {
+          "cell_id": "S2-s4242",
+          "base_cell_id": "S2-s4242",
+          "prompt_id": "S2",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "Three people sit at a wooden table with teacups in a cafe, talking and laughing. Handheld camera, warm indoor light, realistic.",
+          "rater_cue": "the three people's faces, hands, and teacups at the table through the clip",
+          "required_action": "none (conversation, continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S2-s4242.mp4",
+              "sha256": "d1b552795c87855475f8db05493fd8fecd70f181170094d5f85c1bc6ba98a604"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S2-s4242.mp4",
+              "sha256": "7255faaad3a23d2094c1af3dc7b6245469e27470bc277e4280994832c1f13f7b"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S2-s4242.mp4",
+              "sha256": "f69200d1a086831ecbb9f5914499124029a7bd1bdf7566455de89e39624492cc"
+            }
+          }
+        },
+        {
+          "cell_id": "M2-s4242",
+          "base_cell_id": "M2-s4242",
+          "prompt_id": "M2",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A two-armed robot at a kitchen counter grasps a ceramic bowl with one gripper and lifts it off the counter. Static camera, soft daylight, realistic.",
+          "rater_cue": "the ceramic bowl and the gripper through the clip",
+          "required_action": "close the gripper and raise the bowl",
+          "estimated_seconds": "1.5\u20132.0 s",
+          "estimated_max_seconds": 2.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M2-s4242.mp4",
+              "sha256": "f062994b361d4bb4f92b9d5c82a4b2be2a46d3afa25836931f1d6a6de5434644"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M2-s4242.mp4",
+              "sha256": "1943b9d2e69322ac53e26e7ccd83cd4264a4bf1d3a7c682e38fcee083ec0cdd1"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M2-s4242.mp4",
+              "sha256": "71c31c1a1c74ce66bdc806c16c60121fe771fea463e0fa8acf7104d33acf58ae"
+            }
+          }
+        },
+        {
+          "cell_id": "L1-s4242",
+          "base_cell_id": "L1-s4242",
+          "prompt_id": "L1",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A humanoid robot walks steadily down a narrow office hallway. Tracking camera from behind, realistic.",
+          "rater_cue": "the humanoid robot's legs and torso along the hallway through the clip",
+          "required_action": "walking (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q3",
+            "BF16",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L1-s4242.mp4",
+              "sha256": "b11cea45bfaf6682dbcab256b1c0c48b45693896709b51d75eaccba5ad58c7e9"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L1-s4242.mp4",
+              "sha256": "4b8ccbb84f6571f180ad20dab3f7e7159bb164216e4298281aa0f50563036064"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L1-s4242.mp4",
+              "sha256": "8caeb3567560a8ac540c7a2a3a0de9d0cb7c13362b0cae6da690bebef9df6c52"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s4242-rep2",
+          "base_cell_id": "M1-s4242",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "M1-s4242",
+          "ask_q2": true,
+          "slot_arms": [
+            "BF16",
+            "Q1",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s4242.mp4",
+              "sha256": "0c79728b8ae3c7c77e26cbad851cf5a4c8910bb36790c266ab160a72ce68d6ef"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M1-s4242.mp4",
+              "sha256": "6a8995b48f228598b8122b4a29097fe624ddb05ced1a5707c43a55c9374dd2ab"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M1-s4242.mp4",
+              "sha256": "2a7c1c5fbdba4bdf6e98a44f37f8751f4a6914a4aa15a8648ec15d0654f6a19b"
+            }
+          }
+        },
+        {
+          "cell_id": "S3-s4242",
+          "base_cell_id": "S3-s4242",
+          "prompt_id": "S3",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "A city street at night in light rain; cars pass with headlights reflecting on the wet asphalt. Static camera, photoreal.",
+          "rater_cue": "the passing cars and the headlight reflections on the wet asphalt through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "BF16",
+            "Q3"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S3-s4242.mp4",
+              "sha256": "824ff0a957820e640d8e352433dc9ffbbde0ae7b83e4b63e741e5bdd823d5a35"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S3-s4242.mp4",
+              "sha256": "c5e2f691417b5399d0d9fac794d5903ef99be5245907e8a721468b2e0b30244b"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S3-s4242.mp4",
+              "sha256": "97744a00a5cf3f1b336f2959e7507086ca6dba3167c458cf7e03d8f3d36b43e4"
+            }
+          }
+        },
+        {
+          "cell_id": "M4-s4242",
+          "base_cell_id": "M4-s4242",
+          "prompt_id": "M4",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A robot hand holds a glass tilted over a white bowl while water pours out. Static camera, bright light, realistic.",
+          "rater_cue": "the tilted glass, the water, and the white bowl through the clip",
+          "required_action": "continuous pouring (starts mid-pour)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": true,
+          "slot_arms": [
+            "BF16",
+            "Q3",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M4-s4242.mp4",
+              "sha256": "3e52a12f90696bca9c5fc56a4fe13ed0eb865d714814d235dc69c60e4a664dec"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_M4-s4242.mp4",
+              "sha256": "7ada540117313fa6f0ab2a01dad37c95180e074e0d4c3e535a620e2e3e852fa2"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_M4-s4242.mp4",
+              "sha256": "f0191020bd7b60750b05e70c1bf38898b8fbf37bd2f0e11ead5a59a9cf1c3223"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s1111-rep2",
+          "base_cell_id": "S1-s1111",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "S1-s1111",
+          "ask_q2": false,
+          "slot_arms": [
+            "Q1",
+            "Q3",
+            "BF16"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s1111.mp4",
+              "sha256": "058ccc633041bff91ea68af211e37fa82d62a178d96e865efe95f489df936c7d"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S1-s1111.mp4",
+              "sha256": "024c6bb0e482e1ff8496505efb3eac067dfdae30af7c0246eb007c951fdce680"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S1-s1111.mp4",
+              "sha256": "2909f975b1252ae1e6f28dea38a1e0761237dd3a0caf3fdb8843e2b6177ed0d1"
+            }
+          }
+        },
+        {
+          "cell_id": "L4-s4242",
+          "base_cell_id": "L4-s4242",
+          "prompt_id": "L4",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A small wheeled delivery robot rolls along a city sidewalk. Static camera, daylight, realistic.",
+          "rater_cue": "the wheeled robot and the sidewalk surface through the clip",
+          "required_action": "rolling (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q3",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L4-s4242.mp4",
+              "sha256": "d50ef73c90fe2c41be0a985b4327aa4666d63cd18b39f55276c678f0a402c5dc"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_L4-s4242.mp4",
+              "sha256": "60d4c64ef5025f45bbf5aa6caf7a0cd0547b15257c9d93185ed7c4035b22b7a4"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_L4-s4242.mp4",
+              "sha256": "f9f0fd35211542fbf9e61385055e763d379b38d6415c127935d0793f9f905492"
+            }
+          }
+        },
+        {
+          "cell_id": "S4-s4242",
+          "base_cell_id": "S4-s4242",
+          "prompt_id": "S4",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "Wind moves tall grass across an open field under a cloudy sky. Static camera, photoreal.",
+          "rater_cue": "the tall grass and the sky across the field through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "Q3",
+            "Q1"
+          ],
+          "break_after": false,
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S4-s4242.mp4",
+              "sha256": "a38a2b4870c91e2223353ae4c4a16dd4578f4cd8e48149121a63082b74e2fe8d"
+            },
+            "Q1": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q1_cell_S4-s4242.mp4",
+              "sha256": "a6275093c45f2d1fd9b660f9b164dc35eb2934f3d699e1b3313fb59051d701b8"
+            },
+            "Q3": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/Q3_cell_S4-s4242.mp4",
+              "sha256": "f3ed8bc4940505badb1c7c35c05177feb76c9edf4edad84d3bab5878ebc055cc"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block_id": "block2_nano_2afc",
+      "title": "Block 2 \u00b7 Side-by-Side Comparison",
+      "optional": true,
+      "method": "2afc",
+      "arms": [
+        "BF16",
+        "NANO"
+      ],
+      "allow_unsure": false,
+      "allow_skip": false,
+      "require_full_play": true,
+      "break_after_item": null,
+      "enforce_no_adjacent_prompt": true,
+      "enforce_counterbalance_bws3": false,
+      "items": [
+        {
+          "cell_id": "M2-s1111-b2-warmup",
+          "base_cell_id": "M2-s1111",
+          "prompt_id": "M2",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A two-armed robot at a kitchen counter grasps a ceramic bowl with one gripper and lifts it off the counter. Static camera, soft daylight, realistic.",
+          "rater_cue": "the ceramic bowl and the gripper through the clip",
+          "required_action": "close the gripper and raise the bowl",
+          "estimated_seconds": "1.5\u20132.0 s",
+          "estimated_max_seconds": 2.0,
+          "clip_seconds": 2.54,
+          "is_warmup": true,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M2-s1111.mp4",
+              "sha256": "d20195fe82636d57e8c37e250ef6f6ac06c340339b6b33fd79e72921ee53a44a"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M2-s1111.mp4",
+              "sha256": "cc1e807aa100e0024ccf7220b777933c823024b2ea0a89d287768d73fe6179a1"
+            }
+          }
+        },
+        {
+          "cell_id": "S3-s2026-b2-warmup",
+          "base_cell_id": "S3-s2026",
+          "prompt_id": "S3",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "A city street at night in light rain; cars pass with headlights reflecting on the wet asphalt. Static camera, photoreal.",
+          "rater_cue": "the passing cars and the headlight reflections on the wet asphalt through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": true,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S3-s2026.mp4",
+              "sha256": "825b7abf6b6609617f27c35cea81afcca1a9e660ed5c0d4487133575b5122794"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S3-s2026.mp4",
+              "sha256": "decca60c40c15e28202510331aa52aeee710bf0ce56a117770d4c0d23e4711e1"
+            }
+          }
+        },
+        {
+          "cell_id": "M2-s1111-b2",
+          "base_cell_id": "M2-s1111",
+          "prompt_id": "M2",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A two-armed robot at a kitchen counter grasps a ceramic bowl with one gripper and lifts it off the counter. Static camera, soft daylight, realistic.",
+          "rater_cue": "the ceramic bowl and the gripper through the clip",
+          "required_action": "close the gripper and raise the bowl",
+          "estimated_seconds": "1.5\u20132.0 s",
+          "estimated_max_seconds": 2.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M2-s1111.mp4",
+              "sha256": "d20195fe82636d57e8c37e250ef6f6ac06c340339b6b33fd79e72921ee53a44a"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M2-s1111.mp4",
+              "sha256": "cc1e807aa100e0024ccf7220b777933c823024b2ea0a89d287768d73fe6179a1"
+            }
+          }
+        },
+        {
+          "cell_id": "S2-s2026-b2",
+          "base_cell_id": "S2-s2026",
+          "prompt_id": "S2",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "Three people sit at a wooden table with teacups in a cafe, talking and laughing. Handheld camera, warm indoor light, realistic.",
+          "rater_cue": "the three people's faces, hands, and teacups at the table through the clip",
+          "required_action": "none (conversation, continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S2-s2026.mp4",
+              "sha256": "4db5690b568ca3abaf77ce3e945166cc7d3dcdb19115ccecca7a696a17b3f985"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S2-s2026.mp4",
+              "sha256": "37f772d92bde8203b1e6cd6cdf054214b6d0aeaf28939acdeecfed568ba24278"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s2026-b2",
+          "base_cell_id": "M1-s2026",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s2026.mp4",
+              "sha256": "f3b0839ef61e5668a580f0753986f319a0394ed4677081d3c70ce64d11585964"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M1-s2026.mp4",
+              "sha256": "f3baeb57edf29a0c2ebf007ce7f29e03f9140a6de2c279a26919ba21edadcb4b"
+            }
+          }
+        },
+        {
+          "cell_id": "L3-s1111-b2",
+          "base_cell_id": "L3-s1111",
+          "prompt_id": "L3",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A person jogs steadily along the waterline of a beach at sunrise, seen from the side. Side tracking camera, photoreal.",
+          "rater_cue": "the person's legs and stride along the waterline through the clip",
+          "required_action": "jogging (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L3-s1111.mp4",
+              "sha256": "e61e0b52fb5a31f0ea6385be488f075799573b5c2b0dd605e08a80738d9df409"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L3-s1111.mp4",
+              "sha256": "4442cd377bbac518a36dd5b82f8e34618c4f4715c6e1aaea41a851e8f708fea5"
+            }
+          }
+        },
+        {
+          "cell_id": "S3-s1111-b2",
+          "base_cell_id": "S3-s1111",
+          "prompt_id": "S3",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "A city street at night in light rain; cars pass with headlights reflecting on the wet asphalt. Static camera, photoreal.",
+          "rater_cue": "the passing cars and the headlight reflections on the wet asphalt through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S3-s1111.mp4",
+              "sha256": "bd846640dd95bce8f8ec0f942973850de45c1d7364a4d6d0ffc6e955d659cdc8"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S3-s1111.mp4",
+              "sha256": "87907475a9063b33ea6608d9eaa411ec815cfdc5f4ace837f9fb9a049fa21334"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s2026-b2",
+          "base_cell_id": "L2-s2026",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s2026.mp4",
+              "sha256": "9a5f75073e708c06402e7979b550119487eee6818120e529fc23c001cff52052"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L2-s2026.mp4",
+              "sha256": "79e0734375eaeef25f4a3e7532db436a5cffa50d635d8c5706d6062183965574"
+            }
+          }
+        },
+        {
+          "cell_id": "M4-s1111-b2",
+          "base_cell_id": "M4-s1111",
+          "prompt_id": "M4",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A robot hand holds a glass tilted over a white bowl while water pours out. Static camera, bright light, realistic.",
+          "rater_cue": "the tilted glass, the water, and the white bowl through the clip",
+          "required_action": "continuous pouring (starts mid-pour)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M4-s1111.mp4",
+              "sha256": "5c063ff6cba0987ff8f405c082869e7b73f4b1128c32f63eb699f0a4d598f7c6"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M4-s1111.mp4",
+              "sha256": "53b40905303d6f24d28b3f9a607765752738d78f55ef70d985e4aa152f258b75"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s2026-b2",
+          "base_cell_id": "S1-s2026",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s2026.mp4",
+              "sha256": "79dc75f141df436678b930f90a93b6953b76f0debcba354afd20c0282efe34fe"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S1-s2026.mp4",
+              "sha256": "6f0cd57255a5a80475314ecabc8da2ce10203ad34908a46dff231ba9feb885f4"
+            }
+          }
+        },
+        {
+          "cell_id": "L4-s1111-b2",
+          "base_cell_id": "L4-s1111",
+          "prompt_id": "L4",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A small wheeled delivery robot rolls along a city sidewalk. Static camera, daylight, realistic.",
+          "rater_cue": "the wheeled robot and the sidewalk surface through the clip",
+          "required_action": "rolling (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L4-s1111.mp4",
+              "sha256": "e09960d3ee72386b9b1916f7ab89bf653160e947e6f728d46963391c5222a9f8"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L4-s1111.mp4",
+              "sha256": "191a2f11517912e6732624430cbec80e2d00e9430cc4d4d11e2c8a9704996e21"
+            }
+          }
+        },
+        {
+          "cell_id": "M3-s2026-b2",
+          "base_cell_id": "M3-s2026",
+          "prompt_id": "M3",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A robot gripper positioned close to a grey control panel moves in and presses a red button. Close-up, static camera, realistic.",
+          "rater_cue": "the red button and the gripper through the clip",
+          "required_action": "move in and press",
+          "estimated_seconds": "~1.0 s",
+          "estimated_max_seconds": 1.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M3-s2026.mp4",
+              "sha256": "f71f274bf44ca92526fb7db7a126b676e519bac09ceeda6d8882764d8030bfd0"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M3-s2026.mp4",
+              "sha256": "7eb9a868c9cea38082d1015f5783cd53dd7f01ea90df68e5c9be22f268a08ab1"
+            }
+          }
+        },
+        {
+          "cell_id": "L1-s1111-b2",
+          "base_cell_id": "L1-s1111",
+          "prompt_id": "L1",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A humanoid robot walks steadily down a narrow office hallway. Tracking camera from behind, realistic.",
+          "rater_cue": "the humanoid robot's legs and torso along the hallway through the clip",
+          "required_action": "walking (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L1-s1111.mp4",
+              "sha256": "f01d33fc959a1aa6e5ef9a840f5bed22c4c789263b1c928124a6edf38984d206"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L1-s1111.mp4",
+              "sha256": "89378e34f09d98475252df1ef05c50719a76707bbe1bf4c67b173f55c18537ba"
+            }
+          }
+        },
+        {
+          "cell_id": "S4-s1111-b2",
+          "base_cell_id": "S4-s1111",
+          "prompt_id": "S4",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Wind moves tall grass across an open field under a cloudy sky. Static camera, photoreal.",
+          "rater_cue": "the tall grass and the sky across the field through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S4-s1111.mp4",
+              "sha256": "0b0bc7d0aff78004421853e16492d2eb261fde3cdf7f62ccb9deac5dc7408a77"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S4-s1111.mp4",
+              "sha256": "1408b75a28fdb76dbca7c3d8fb552c4a660abb98abff2acd5fb0d85492521232"
+            }
+          }
+        },
+        {
+          "cell_id": "M2-s2026-b2",
+          "base_cell_id": "M2-s2026",
+          "prompt_id": "M2",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A two-armed robot at a kitchen counter grasps a ceramic bowl with one gripper and lifts it off the counter. Static camera, soft daylight, realistic.",
+          "rater_cue": "the ceramic bowl and the gripper through the clip",
+          "required_action": "close the gripper and raise the bowl",
+          "estimated_seconds": "1.5\u20132.0 s",
+          "estimated_max_seconds": 2.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M2-s2026.mp4",
+              "sha256": "a26ec6a42f789351edc6773de199629850caa2366fe461a14501078e67c17404"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M2-s2026.mp4",
+              "sha256": "af5b8f441a32d2699e15ae7186b82250c08edcc34e569b242e2ad72ad1ef0735"
+            }
+          }
+        },
+        {
+          "cell_id": "L3-s2026-b2",
+          "base_cell_id": "L3-s2026",
+          "prompt_id": "L3",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A person jogs steadily along the waterline of a beach at sunrise, seen from the side. Side tracking camera, photoreal.",
+          "rater_cue": "the person's legs and stride along the waterline through the clip",
+          "required_action": "jogging (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L3-s2026.mp4",
+              "sha256": "22c77732ab63a4e7ca6456df8570a932968b3089d9d697c405f5265fb0d9650a"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L3-s2026.mp4",
+              "sha256": "5a4de548755b782d7abbb3bb511bdb18c6aa0d19876f9c91bf6bad1ee44f318c"
+            }
+          }
+        },
+        {
+          "cell_id": "S2-s1111-b2",
+          "base_cell_id": "S2-s1111",
+          "prompt_id": "S2",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Three people sit at a wooden table with teacups in a cafe, talking and laughing. Handheld camera, warm indoor light, realistic.",
+          "rater_cue": "the three people's faces, hands, and teacups at the table through the clip",
+          "required_action": "none (conversation, continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S2-s1111.mp4",
+              "sha256": "0e2807e9f2b8686731d0e2962a3bbb880eb7cf76e0fbe5facd5d1b28bd6244f1"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S2-s1111.mp4",
+              "sha256": "f36b76b76b9e349919179f013c488fa77fe3b1baf6ed1b928197465305e2ed3f"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s2026-b2-rep2",
+          "base_cell_id": "M1-s2026",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "M1-s2026-b2",
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s2026.mp4",
+              "sha256": "f3b0839ef61e5668a580f0753986f319a0394ed4677081d3c70ce64d11585964"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M1-s2026.mp4",
+              "sha256": "f3baeb57edf29a0c2ebf007ce7f29e03f9140a6de2c279a26919ba21edadcb4b"
+            }
+          }
+        },
+        {
+          "cell_id": "L4-s2026-b2",
+          "base_cell_id": "L4-s2026",
+          "prompt_id": "L4",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A small wheeled delivery robot rolls along a city sidewalk. Static camera, daylight, realistic.",
+          "rater_cue": "the wheeled robot and the sidewalk surface through the clip",
+          "required_action": "rolling (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L4-s2026.mp4",
+              "sha256": "752c9a4929c0d59c15271b2b84c945a30672249ac236097754fbf700daaa6d08"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L4-s2026.mp4",
+              "sha256": "b2f47113700a088c48d443323a330a3ef509145db1bafe7e8938f7671ecb9ba4"
+            }
+          }
+        },
+        {
+          "cell_id": "M4-s2026-b2",
+          "base_cell_id": "M4-s2026",
+          "prompt_id": "M4",
+          "prompt_type": "manipulation",
+          "seed": 2026,
+          "prompt": "A robot hand holds a glass tilted over a white bowl while water pours out. Static camera, bright light, realistic.",
+          "rater_cue": "the tilted glass, the water, and the white bowl through the clip",
+          "required_action": "continuous pouring (starts mid-pour)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M4-s2026.mp4",
+              "sha256": "c4f314ffaeda74205992229cd234d073ca69b575332a142072099a014e032b93"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M4-s2026.mp4",
+              "sha256": "548503cfc2d24f8cf9c9dd21c45e0653e932acbc203584404a56ac1dbdbcbdaf"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s2026-b2-rep2",
+          "base_cell_id": "L2-s2026",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "L2-s2026-b2",
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s2026.mp4",
+              "sha256": "9a5f75073e708c06402e7979b550119487eee6818120e529fc23c001cff52052"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L2-s2026.mp4",
+              "sha256": "79e0734375eaeef25f4a3e7532db436a5cffa50d635d8c5706d6062183965574"
+            }
+          }
+        },
+        {
+          "cell_id": "S3-s2026-b2",
+          "base_cell_id": "S3-s2026",
+          "prompt_id": "S3",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "A city street at night in light rain; cars pass with headlights reflecting on the wet asphalt. Static camera, photoreal.",
+          "rater_cue": "the passing cars and the headlight reflections on the wet asphalt through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S3-s2026.mp4",
+              "sha256": "825b7abf6b6609617f27c35cea81afcca1a9e660ed5c0d4487133575b5122794"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S3-s2026.mp4",
+              "sha256": "decca60c40c15e28202510331aa52aeee710bf0ce56a117770d4c0d23e4711e1"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s1111-b2",
+          "base_cell_id": "L2-s1111",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 1111,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s1111.mp4",
+              "sha256": "a90b4e9895631284ca232ee950142ecfd7393291af8b0e24423e201946c2a840"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L2-s1111.mp4",
+              "sha256": "681090d7756bb45820a9ce3944a73a82640be2da3301045c39611c36bb6f6b83"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s4242-b2",
+          "base_cell_id": "M1-s4242",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s4242.mp4",
+              "sha256": "0c79728b8ae3c7c77e26cbad851cf5a4c8910bb36790c266ab160a72ce68d6ef"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M1-s4242.mp4",
+              "sha256": "7e345a4b11a5d0ef29d0f5582249bebb5dcb710191415cc6dcf4a4488feea2a7"
+            }
+          }
+        },
+        {
+          "cell_id": "L1-s2026-b2",
+          "base_cell_id": "L1-s2026",
+          "prompt_id": "L1",
+          "prompt_type": "locomotion",
+          "seed": 2026,
+          "prompt": "A humanoid robot walks steadily down a narrow office hallway. Tracking camera from behind, realistic.",
+          "rater_cue": "the humanoid robot's legs and torso along the hallway through the clip",
+          "required_action": "walking (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L1-s2026.mp4",
+              "sha256": "91123fd635bdf7efa78d73773aa7cfa5435cae00ae65e8824c0e42f5fc67c448"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L1-s2026.mp4",
+              "sha256": "04b6ba43e85d44c03307a967411905bf58e29509611d8593428daeb8c96182ba"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s1111-b2",
+          "base_cell_id": "S1-s1111",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s1111.mp4",
+              "sha256": "058ccc633041bff91ea68af211e37fa82d62a178d96e865efe95f489df936c7d"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S1-s1111.mp4",
+              "sha256": "e4278be6ff2c6c415bfc3eadf12e6898704e2bf228cd4a7897eb0f447316f16a"
+            }
+          }
+        },
+        {
+          "cell_id": "M3-s1111-b2",
+          "base_cell_id": "M3-s1111",
+          "prompt_id": "M3",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A robot gripper positioned close to a grey control panel moves in and presses a red button. Close-up, static camera, realistic.",
+          "rater_cue": "the red button and the gripper through the clip",
+          "required_action": "move in and press",
+          "estimated_seconds": "~1.0 s",
+          "estimated_max_seconds": 1.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M3-s1111.mp4",
+              "sha256": "77931b4f678fd8c612b263b99552c43f0cebae8e5f0f39520699cb2d3f180e14"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M3-s1111.mp4",
+              "sha256": "cdfc036d598953d29938170cd239ff405e155574bb2fc6a610d27527c397876d"
+            }
+          }
+        },
+        {
+          "cell_id": "S4-s2026-b2",
+          "base_cell_id": "S4-s2026",
+          "prompt_id": "S4",
+          "prompt_type": "scene",
+          "seed": 2026,
+          "prompt": "Wind moves tall grass across an open field under a cloudy sky. Static camera, photoreal.",
+          "rater_cue": "the tall grass and the sky across the field through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S4-s2026.mp4",
+              "sha256": "8a767d00615a263dc2b98ad36d1c35a3c83f7ffc93bbf3eeb256b68aa353e444"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S4-s2026.mp4",
+              "sha256": "aae1c6458a360d535f78ef88019def799de9806aca6f3dcd193541c32ad262b3"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s1111-b2",
+          "base_cell_id": "M1-s1111",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 1111,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s1111.mp4",
+              "sha256": "26738e93925931849239a9ee0aa53f88a98c89c7b7046b946fea21df4b259a5b"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M1-s1111.mp4",
+              "sha256": "30718308c509512e1985de909c758a7d9d6acf4f4af048ee6c0acfd80fec55bd"
+            }
+          }
+        },
+        {
+          "cell_id": "L2-s4242-b2",
+          "base_cell_id": "L2-s4242",
+          "prompt_id": "L2",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A four-legged robot trots across a gravel yard. Side tracking camera, overcast light, realistic.",
+          "rater_cue": "the four-legged robot's legs and body over the gravel through the clip",
+          "required_action": "trotting (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L2-s4242.mp4",
+              "sha256": "d7fcc6ebc68b5af3858e3bbda8cc83fec6ecac8a8f018dc1d677d113ede6a781"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L2-s4242.mp4",
+              "sha256": "d050b065757bc7aa622eb4b11dad09c504a0ad055f9b6e0d917d7f1d598ef405"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s4242-b2",
+          "base_cell_id": "S1-s4242",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s4242.mp4",
+              "sha256": "52583e57c452235b7779d46449cf1db30a69de92e787150762bd2a9af602dba8"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S1-s4242.mp4",
+              "sha256": "b5a2f0d853cc18555c12a9f078d4cd52e479c8e664dc42adaca9bb18831cbf29"
+            }
+          }
+        },
+        {
+          "cell_id": "M3-s4242-b2",
+          "base_cell_id": "M3-s4242",
+          "prompt_id": "M3",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A robot gripper positioned close to a grey control panel moves in and presses a red button. Close-up, static camera, realistic.",
+          "rater_cue": "the red button and the gripper through the clip",
+          "required_action": "move in and press",
+          "estimated_seconds": "~1.0 s",
+          "estimated_max_seconds": 1.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M3-s4242.mp4",
+              "sha256": "0c0ac4a2a74bc623c9470e7a0b52ec82fdbc1b8ce1672b93e56ce6995e949735"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M3-s4242.mp4",
+              "sha256": "a89b97cc15cc7c4880c9f66b75370ef05a8e305f3759a99714f8f1ee22933b27"
+            }
+          }
+        },
+        {
+          "cell_id": "L3-s4242-b2",
+          "base_cell_id": "L3-s4242",
+          "prompt_id": "L3",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A person jogs steadily along the waterline of a beach at sunrise, seen from the side. Side tracking camera, photoreal.",
+          "rater_cue": "the person's legs and stride along the waterline through the clip",
+          "required_action": "jogging (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L3-s4242.mp4",
+              "sha256": "0578d03387c0413b12ff0e6781f722b3be9f8b7b70f44bd22ee81f832d2fb4e1"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L3-s4242.mp4",
+              "sha256": "7ac736ac505fa07734cd719bab74a4070ab08a96658b1d07a51df9064716b541"
+            }
+          }
+        },
+        {
+          "cell_id": "S2-s4242-b2",
+          "base_cell_id": "S2-s4242",
+          "prompt_id": "S2",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "Three people sit at a wooden table with teacups in a cafe, talking and laughing. Handheld camera, warm indoor light, realistic.",
+          "rater_cue": "the three people's faces, hands, and teacups at the table through the clip",
+          "required_action": "none (conversation, continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S2-s4242.mp4",
+              "sha256": "d1b552795c87855475f8db05493fd8fecd70f181170094d5f85c1bc6ba98a604"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S2-s4242.mp4",
+              "sha256": "8551595aedbd7da10e1dabe24871cd2496dee9cf83098cb719506f827ede27cf"
+            }
+          }
+        },
+        {
+          "cell_id": "M2-s4242-b2",
+          "base_cell_id": "M2-s4242",
+          "prompt_id": "M2",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A two-armed robot at a kitchen counter grasps a ceramic bowl with one gripper and lifts it off the counter. Static camera, soft daylight, realistic.",
+          "rater_cue": "the ceramic bowl and the gripper through the clip",
+          "required_action": "close the gripper and raise the bowl",
+          "estimated_seconds": "1.5\u20132.0 s",
+          "estimated_max_seconds": 2.0,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M2-s4242.mp4",
+              "sha256": "f062994b361d4bb4f92b9d5c82a4b2be2a46d3afa25836931f1d6a6de5434644"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M2-s4242.mp4",
+              "sha256": "26b20a4a8152998aa3a11eddd4c337739f0fec8346947be007cadc1a5e4239d0"
+            }
+          }
+        },
+        {
+          "cell_id": "L1-s4242-b2",
+          "base_cell_id": "L1-s4242",
+          "prompt_id": "L1",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A humanoid robot walks steadily down a narrow office hallway. Tracking camera from behind, realistic.",
+          "rater_cue": "the humanoid robot's legs and torso along the hallway through the clip",
+          "required_action": "walking (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L1-s4242.mp4",
+              "sha256": "b11cea45bfaf6682dbcab256b1c0c48b45693896709b51d75eaccba5ad58c7e9"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L1-s4242.mp4",
+              "sha256": "dc11bb4852cd8a9b8891f403c56572e0aef4eacaf6581f928db7c94e97335ba1"
+            }
+          }
+        },
+        {
+          "cell_id": "M1-s4242-b2-rep2",
+          "base_cell_id": "M1-s4242",
+          "prompt_id": "M1",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A single robot arm in a warehouse grasps a cardboard box on a moving conveyor belt and lifts it clear of the belt. Static camera, overhead fluorescent light, realistic.",
+          "rater_cue": "the box and the gripper through the clip",
+          "required_action": "grasp and lift a box clear of the belt",
+          "estimated_seconds": "1.5\u20132.5 s",
+          "estimated_max_seconds": 2.5,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "M1-s4242-b2",
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M1-s4242.mp4",
+              "sha256": "0c79728b8ae3c7c77e26cbad851cf5a4c8910bb36790c266ab160a72ce68d6ef"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M1-s4242.mp4",
+              "sha256": "7e345a4b11a5d0ef29d0f5582249bebb5dcb710191415cc6dcf4a4488feea2a7"
+            }
+          }
+        },
+        {
+          "cell_id": "S3-s4242-b2",
+          "base_cell_id": "S3-s4242",
+          "prompt_id": "S3",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "A city street at night in light rain; cars pass with headlights reflecting on the wet asphalt. Static camera, photoreal.",
+          "rater_cue": "the passing cars and the headlight reflections on the wet asphalt through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S3-s4242.mp4",
+              "sha256": "824ff0a957820e640d8e352433dc9ffbbde0ae7b83e4b63e741e5bdd823d5a35"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S3-s4242.mp4",
+              "sha256": "f51afd94a00535bb6eec9f803dbbaaefbabe396a288604a84a43486d265b089b"
+            }
+          }
+        },
+        {
+          "cell_id": "M4-s4242-b2",
+          "base_cell_id": "M4-s4242",
+          "prompt_id": "M4",
+          "prompt_type": "manipulation",
+          "seed": 4242,
+          "prompt": "A robot hand holds a glass tilted over a white bowl while water pours out. Static camera, bright light, realistic.",
+          "rater_cue": "the tilted glass, the water, and the white bowl through the clip",
+          "required_action": "continuous pouring (starts mid-pour)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_M4-s4242.mp4",
+              "sha256": "3e52a12f90696bca9c5fc56a4fe13ed0eb865d714814d235dc69c60e4a664dec"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_M4-s4242.mp4",
+              "sha256": "d5d1a370cb8228630a91f9689a763a33a3511965e51a6e64f53b866cdd45ced8"
+            }
+          }
+        },
+        {
+          "cell_id": "S1-s1111-b2-rep2",
+          "base_cell_id": "S1-s1111",
+          "prompt_id": "S1",
+          "prompt_type": "scene",
+          "seed": 1111,
+          "prompt": "Waves break onto a rocky shore at sunset as spray catches the low orange light; the camera pans slowly left along the waterline. Photoreal.",
+          "rater_cue": "the waves, the spray, and the rocky waterline through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": true,
+          "repeat_of_cell_id": "S1-s1111-b2",
+          "ask_q2": false,
+          "slot_arms": [
+            "NANO",
+            "BF16"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S1-s1111.mp4",
+              "sha256": "058ccc633041bff91ea68af211e37fa82d62a178d96e865efe95f489df936c7d"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S1-s1111.mp4",
+              "sha256": "e4278be6ff2c6c415bfc3eadf12e6898704e2bf228cd4a7897eb0f447316f16a"
+            }
+          }
+        },
+        {
+          "cell_id": "L4-s4242-b2",
+          "base_cell_id": "L4-s4242",
+          "prompt_id": "L4",
+          "prompt_type": "locomotion",
+          "seed": 4242,
+          "prompt": "A small wheeled delivery robot rolls along a city sidewalk. Static camera, daylight, realistic.",
+          "rater_cue": "the wheeled robot and the sidewalk surface through the clip",
+          "required_action": "rolling (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_L4-s4242.mp4",
+              "sha256": "d50ef73c90fe2c41be0a985b4327aa4666d63cd18b39f55276c678f0a402c5dc"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_L4-s4242.mp4",
+              "sha256": "c2a19e7de951423a7c581ff0b4c9ab3e9264d2e538daa497a7c60d82632d238b"
+            }
+          }
+        },
+        {
+          "cell_id": "S4-s4242-b2",
+          "base_cell_id": "S4-s4242",
+          "prompt_id": "S4",
+          "prompt_type": "scene",
+          "seed": 4242,
+          "prompt": "Wind moves tall grass across an open field under a cloudy sky. Static camera, photoreal.",
+          "rater_cue": "the tall grass and the sky across the field through the clip",
+          "required_action": "none (continuous)",
+          "estimated_seconds": "n/a (continuous)",
+          "estimated_max_seconds": null,
+          "clip_seconds": 2.54,
+          "is_warmup": false,
+          "is_repeat": false,
+          "repeat_of_cell_id": null,
+          "ask_q2": false,
+          "slot_arms": [
+            "BF16",
+            "NANO"
+          ],
+          "arms": {
+            "BF16": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/BF16_cell_S4-s4242.mp4",
+              "sha256": "a38a2b4870c91e2223353ae4c4a16dd4578f4cd8e48149121a63082b74e2fe8d"
+            },
+            "NANO": {
+              "path": "E:/AI/rnd-local/projects/cosmos3/b200-same-card/artifacts/arm4_NANO/x/mp4/NANO_cell_S4-s4242.mp4",
+              "sha256": "578ae75ff30f05f7ca4773d4dfcfa8a2eb15830e067f8ff0543f01879e19e1cc"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "blindpanel"
+version = "0.1.0"
+description = "Reusable, offline, schema-driven blind human evaluation harness for generated video and media."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+  { name = "mcp-tool-shop", email = "64996768+mcp-tool-shop@users.noreply.github.com" },
+]
+keywords = ["blind-evaluation", "video-quality", "human-preference", "bws", "2afc", "psychophysics"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-cov>=5.0.0",
+  "ruff>=0.6.0",
+  "playwright>=1.45.0",
+]
+
+[project.scripts]
+blindpanel = "blindpanel.server:main"
+blindpanel-unblind = "blindpanel.unblind:main"
+blindpanel-build-cosmos3 = "blindpanel.cosmos3_study:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["blindpanel"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"blindpanel/static" = "blindpanel/static"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["blindpanel"]
+omit = ["blindpanel/__main__.py"]

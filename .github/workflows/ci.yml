@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "blindpanel/**"
+      - "tests/**"
+      - "scripts/**"
+      - "configs/**"
+      - "pyproject.toml"
+      - "codecov.yml"
+      - ".github/workflows/ci.yml"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: Lint, Test & Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies and Playwright Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          playwright install --with-deps chromium
+
+      - name: Run verification script (ruff + pytest + coverage)
+        run: bash scripts/verify.sh
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          use_oidc: true
+          files: ./junit.xml
+          fail_ci_if_error: false
