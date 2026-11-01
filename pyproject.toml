@@ -23,7 +23,10 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
-dependencies = []
+dependencies = [
+  "numpy>=1.24.0",
+  "Pillow>=10.0.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -32,12 +35,17 @@ dev = [
   "ruff>=0.6.0",
   "playwright>=1.45.0",
 ]
+dinov2 = [
+  "torch>=2.0.0",
+  "transformers>=4.35.0",
+]
 
 [project.scripts]
 blindpanel = "blindpanel.server:main"
 blindpanel-unblind = "blindpanel.unblind:main"
 blindpanel-build-cosmos3 = "blindpanel.cosmos3_study:main"
 blindpanel-leak-guard = "blindpanel.leak_guard:main"
+blindpanel-composition-divergence = "blindpanel.composition_divergence:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["blindpanel"]
