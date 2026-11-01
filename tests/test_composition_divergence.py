@@ -90,7 +90,7 @@ def test_clip_name_parser_and_hash_list_formats() -> None:
     """Requirement 1: Verify clip-name parser maps B200 fetch_list.txt and sha256sums.txt patterns
     to (arm, prompt, seed) using made-up names in the same pattern."""
     # Pattern 1: fetch_list.txt / sha256sums.txt mp4/<ARM>_cell_<PROMPT>-s<SEED>.mp4
-    p1 = parse_clip_name(f"/root/sq_b200/mp4/{ARM_BF16}_cell_PA-s101.mp4")
+    p1 = parse_clip_name(f"/tmp/run/mp4/{ARM_BF16}_cell_PA-s101.mp4")
     assert p1 is not None
     assert (p1.arm, p1.prompt, p1.seed, p1.cell_id) == (ARM_BF16, "PA", 101, "PA-s101")
 
@@ -106,20 +106,20 @@ def test_clip_name_parser_and_hash_list_formats() -> None:
 
     # Non-clip entries return None
     assert parse_clip_name("") is None
-    assert parse_clip_name("/root/sq_b200/results.jsonl") is None
-    assert parse_clip_name("/root/sq_b200/b200_same_card_out.tgz") is None
+    assert parse_clip_name("/tmp/run/results.jsonl") is None
+    assert parse_clip_name("/tmp/run/run_out.tgz") is None
     assert parse_clip_name("cell_PA-s101.mp4") is None
     assert parse_clip_name("unmatched_file.mp4") is None
 
     # Parse fetch_list.txt with mixed metadata and clip lines
     fetch_txt = "\n".join(
         [
-            "/root/sq_b200/b200_same_card_out.tgz",
-            "/root/sq_b200/sha256sums.txt",
-            "/root/sq_b200/results.jsonl",
-            f"/root/sq_b200/mp4/{ARM_BF16}_cell_PA-s101.mp4",
-            f"/root/sq_b200/mp4/{ARM_Q1}_cell_PA-s101.mp4",
-            f"/root/sq_b200/mp4/{ARM_Q3}_cell_PA-s101.mp4",
+            "/tmp/run/run_out.tgz",
+            "/tmp/run/sha256sums.txt",
+            "/tmp/run/results.jsonl",
+            f"/tmp/run/mp4/{ARM_BF16}_cell_PA-s101.mp4",
+            f"/tmp/run/mp4/{ARM_Q1}_cell_PA-s101.mp4",
+            f"/tmp/run/mp4/{ARM_Q3}_cell_PA-s101.mp4",
         ]
     )
     parsed_fetch = parse_fetch_list(fetch_txt)
