@@ -3,7 +3,7 @@
 Scans every tracked file (via `git ls-files`) or an explicit directory tree and fails on:
 1. A per-item slot or arm order in config/data files, literal arm-order arrays, or an arm-map file mapping `ARM_1..ARM_4` to clip prefixes.
 2. An arm label within N=240 characters of a 64-hex SHA-256 digest or a `.mp4` clip path.
-3. A seed or salt key with a literal value in config/data files, or the voided study seed literal.
+3. A seed or salt key with a literal value in config/data files, the voided study seed literal, or real study cell/seed tokens in composition-divergence code/fixtures.
 4. An absolute local path (Windows drive letters or user-home paths).
 5. Any image under `docs/` whose source isn't the mock-clip generator (must carry `blindpanel-mock-clip-generator-v1`
    in its PNG `tEXt` metadata AND be verified in `docs/screenshots/mock_manifest.json` with a `-mock-` filename).
@@ -58,7 +58,22 @@ _FORBIDDEN_CELL_PREFIXES = (
     "Q" + "1_" + "cell",
     "Q" + "3_" + "cell",
     "NA" + "NO_" + "cell",
+    "BF" + "16/" + "cell_",
+    "Q" + "1/" + "cell_",
+    "Q" + "3/" + "cell_",
+    "NA" + "NO/" + "cell_",
 )
+_FORBIDDEN_TRACKED_FILENAMES = (
+    "sha256" + "sums.txt",
+    "fetch" + "_list.txt",
+)
+_FORBIDDEN_SEALED_JSON_RE = re.compile(
+    r"^(?:composition_divergence(?:_receipt)?_.+\.json|audit_manifest_addendum_.+\.json)$",
+    flags=re.IGNORECASE,
+)
+_STUDY_SEEDS_PAT = "|".join(["11" + "11", "20" + "26", "42" + "42"])
+_STUDY_SEED_TOKEN_RE = re.compile(rf"\b(?:{_STUDY_SEEDS_PAT})\b")
+_STUDY_CELL_ID_RE = re.compile(r"\b(?:cell_)?(?:M[1-4]|L[1-4]|S[1-4])-s\d+\b")
 
 ABS_PATH_RE = re.compile(
     r"(?:(?<![A-Za-z0-9])[A-Za-z]:[/\\][^\s\"'`<>|]+|/(?:Users|home)/[A-Za-z0-9._-]+/)"
@@ -96,16 +111,27 @@ def list_tracked_files(repo_root: Path) -> List[Path]:
 
 
 def scan_text_content_for_leaks(rel_path: str, content: str) -> List[str]:
-    """Scan a single text file's content for Rules 4(a)–4(d) and arm-map violations."""
+    """Scan a single text file's content for Rules 4(a)–4(d), arm-map, and composition-divergence hygiene."""
     violations: List[str] = []
     is_json_or_config = rel_path.endswith((".json", ".jsonl", ".yaml", ".yml", ".toml"))
     lower_name = Path(rel_path).name.lower()
 
-    # 0. Arm-map files or JSON mappings from ARM_1..ARM_4 to clip filename prefixes
+    # 0. Arm-map files, sealed divergence outputs, hash lists, or JSON mappings from ARM_1..ARM_4 to clip prefixes
     if ("arm_map" in lower_name or "arm-map" in lower_name) and is_json_or_config:
         violations.append(f"{rel_path}: arm_map file must not be tracked in git")
+    if lower_name in _FORBIDDEN_TRACKED_FILENAMES:
+        violations.append(f"{rel_path}: study hash/fetch list file must not be tracked in git")
+    if _FORBIDDEN_SEALED_JSON_RE.match(lower_name):
+        violations.append(f"{rel_path}: sealed composition-divergence output or addendum must not be tracked in git")
     if is_json_or_config and ARM_MAP_JSON_ENTRY_RE.search(content):
         violations.append(f"{rel_path}: contains arm_map mapping from ARM_ pseudonym to clip prefix")
+
+    # 0b. Composition-divergence modules, tests, and fixtures must never carry real study cell IDs or seeds
+    if "divergence" in lower_name:
+        if _STUDY_CELL_ID_RE.search(content):
+            violations.append(f"{rel_path}: composition-divergence file contains real study cell identifier")
+        if _STUDY_SEED_TOKEN_RE.search(content):
+            violations.append(f"{rel_path}: composition-divergence file contains real study seed literal")
 
     # 1. Voided seed or study cell prefixes in any tracked file
     if VOID_SEED_RE.search(content):
